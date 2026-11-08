@@ -118,12 +118,8 @@ def ensure_environment() -> None:
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if probe.returncode:
         print("正在安装项目测试依赖；首次运行需要连接网络……", flush=True)
-        env = os.environ.copy()
-        for name in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
-            env[name] = "http://127.0.0.1:7890"
-        env["NO_PROXY"] = env["no_proxy"] = "localhost,127.0.0.1,::1"
         subprocess.run([str(PYTHON), "-m", "pip", "install", "-r", str(ROOT / "requirements-dev.txt")],
-                       cwd=ROOT, env=env, check=True)
+                       cwd=ROOT, check=True)
 
 
 def main() -> int:
@@ -140,10 +136,6 @@ def main() -> int:
     os.chdir(ROOT)
     ensure_environment()
     configure()
-    # Per-process proxy configuration only; never bypass it for public destinations.
-    for name in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
-        os.environ[name] = "http://127.0.0.1:7890"
-    os.environ["NO_PROXY"] = os.environ["no_proxy"] = "localhost,127.0.0.1,::1"
     command = [str(PYTHON), "-m", "patchlab", "web", "--port", str(args.port)]
     if CONFIG.exists():
         command.extend(["--model-config", str(CONFIG)])
@@ -158,5 +150,5 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
         print(f"\n启动失败：{exc}", file=sys.stderr)
-        print("请检查 Python、Git、模型配置和本机 127.0.0.1:7890 代理后重试。", file=sys.stderr)
+        print("请检查 Python、Git、模型配置和网络连接后重试。", file=sys.stderr)
         raise SystemExit(1)

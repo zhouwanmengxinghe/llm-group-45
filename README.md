@@ -4,19 +4,21 @@ PatchLab is an independent course project for comparing single-attempt and itera
 
 See [the proposal technology plan](docs/proposal-technology-plan.md) for section-by-section recommendations and English wording for the proposal.
 
+小组成员与 AI 工具请先阅读 [项目介绍与交接](HANDOFF.md)，其中列出当前能力、使用步骤、待办、限制和分工建议。
+
 ## Windows 一键启动
 
 安装 Python 3.12+ 和 Git 后，双击项目目录中的 `start.cmd`。首次启动会创建项目自己的 `.venv`、安装 pytest，并提供三种选项：默认使用 DeepSeek 官方 V4.1 Flash（只需输入 DeepSeek 官方 API 密钥）；选择其他兼容服务（输入完整接口地址、模型名称和密钥）；或暂不配置先打开页面。若选择保存密钥，Windows 会以当前用户身份加密后保存在 `configs/.model-key`；配置和密钥文件都不会提交到 Git。后续双击即可启动并打开浏览器。启动窗口运行本地 Python 服务和 Agent 控制器；关闭启动窗口会停止服务。
 
 DeepSeek 默认地址为 `https://api.deepseek.com/chat/completions`，模型名为 `deepseek-flash`，这是指向当前 Flash 版本的官方别名。默认设置关闭 DeepSeek thinking 模式，以适配目前的短输出上限和结构化动作；仍由 Agent 使用工具和测试反馈进行多步修复。该默认选项需要 DeepSeek 官方 API 密钥；HKU 或其他服务商的密钥应选“其他兼容服务”并使用其提供的地址和部署名。正式实验须记录官方别名实际对应的模型版本，别名可能随服务商更新。
 
-启动器默认通过本机 `http://127.0.0.1:7890` 代理安装依赖并访问模型，回环地址直接连接。首次安装需要能访问依赖来源；若代理不可用，启动会失败并提示检查。已有 `PATCHLAB_API_KEY` 环境变量优先于保存的密钥。更换模型可编辑 `configs/my-model.toml`；若其他服务商不支持 DeepSeek 的 thinking 参数，请删除 `thinking` 配置。更换已保存密钥可删除 `configs/.model-key` 后重新启动。也可以首次跳过模型设置先打开界面，但只有配置模型后才能对话或修复。
+首次安装需要能访问依赖来源。已有 `PATCHLAB_API_KEY` 环境变量优先于保存的密钥。更换模型可编辑 `configs/my-model.toml`；若其他服务商不支持 DeepSeek 的 thinking 参数，请删除 `thinking` 配置。更换已保存密钥可删除 `configs/.model-key` 后重新启动。也可以首次跳过模型设置先打开界面，但只有配置模型后才能对话或修复。
 
 命令行也可运行 `./start.cmd`；若默认 8765 端口被占用，可运行 `./start.cmd --port 8766`。启动器目前面向 Windows；以下手动命令仍然可用。
 
 ## 本地工作台
 
-完成下面的 Python 环境安装和模型配置后，在当前 PowerShell 窗口设置好密钥与代理，运行：
+完成下面的 Python 环境安装和模型配置后，在当前 PowerShell 窗口设置好密钥，运行：
 
 ```powershell
 .\.venv\Scripts\python.exe -m patchlab web --model-config configs\my-model.toml
@@ -38,8 +40,6 @@ Requires Python 3.12+, Git, and pytest. From this directory, using PowerShell:
 
 ```powershell
 python -m venv .venv
-$env:HTTP_PROXY = $env:HTTPS_PROXY = 'http://127.0.0.1:7890'
-$env:NO_PROXY = 'localhost,127.0.0.1,::1'
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m patchlab demo --trusted-local --mode feedback --output runs/demo
 ```
@@ -61,13 +61,11 @@ The scripted model's first proposal passes the targeted test and fails the regre
 Copy-Item configs/model.example.toml configs/my-model.toml
 # 编辑 configs/my-model.toml，填写 url 和 name
 $env:PATCHLAB_API_KEY = '在此填入你的密钥'
-$env:HTTP_PROXY = $env:HTTPS_PROXY = 'http://127.0.0.1:7890'
-$env:NO_PROXY = 'localhost,127.0.0.1,::1'
 ```
 
 切换兼容模型时复制另一份配置并修改 URL、模型名和（必要时）密钥环境变量，运行时用 `--model-config configs/my-model.toml` 选择。`PATCHLAB_API_URL` 和 `PATCHLAB_MODEL` 若已设置，会覆盖文件中的 URL 和名称；不需要时用 `Remove-Item Env:PATCHLAB_API_URL,Env:PATCHLAB_MODEL -ErrorAction SilentlyContinue` 清除。仅设置这两个变量和 `PATCHLAB_API_KEY` 也可不使用配置文件。
 
-接口要求兼容非流式 chat completions 的 `messages`、`max_tokens`、`temperature` 请求和 `choices[0].message.content` 响应，模型须能返回指定的 JSON 动作。不同供应商的私有认证方式、请求字段或响应格式可能需要另写适配器，不能保证只换 URL 即可使用。远程地址须使用 HTTPS；本地回环地址可用 HTTP。请求会发送问题描述、所读取的源码及测试输出。当前未接入或验证任何真实供应商。
+接口要求兼容非流式 chat completions 的 `messages`、`max_tokens`、`temperature` 请求和 `choices[0].message.content` 响应，模型须能返回指定的 JSON 动作。不同供应商的私有认证方式、请求字段或响应格式可能需要另写适配器，不能保证只换 URL 即可使用。远程地址须使用 HTTPS；本地回环地址可用 HTTP。请求会发送问题描述、所读取的源码及测试输出。DeepSeek 已有一次 QuixBugs 本地修复验证，其他供应商及后续核心改动仍需联调。
 
 ```powershell
 python -m patchlab run --model-config configs/my-model.toml --repo D:/path/to/target --revision HEAD `
@@ -87,10 +85,10 @@ The Docker runner expects a locally available Linux image that provides `python`
 - `candidate-N.patch`: reviewable proposals, including ones that did not pass verification.
 - `final.patch`: generated only after the supplied targeted and regression tests both pass.
 
-Local success means the supplied tests passed. The MVP does not prepare QuixBugs, provision SWE-bench environments, or independently grade held-out tests. Docker and the live provider still need deployment verification. The comparison command groups recorded runs by model and condition; keep task sets and configuration matched when using it for an experiment.
+Local success means the supplied tests passed. Five QuixBugs development examples are included, but SWE-bench provisioning and independent held-out grading are not implemented. Docker and the latest live-provider workflow still need deployment verification. The comparison command groups recorded runs by model and condition; keep task sets and configuration matched when using it for an experiment.
 
 ## 小组分工与后续接口
 
 - Agent 核心：`patchlab/decision.py` 处理模型请求与动作；`patchlab/experiment.py` 管理观察、决策、失败反馈和三种模式。
 - 工具与执行：`patchlab/workbench.py` 是目前的基础版本，供负责工具的组员继续完善，包括 Docker 实机验证、更多仓库类型和测试执行方式。控制器使用 `inspect`、`prepare`、`stage` 和测试运行器的 `run` 返回结果。
-- 数据集与评测：当前只有离线示例和简单结果汇总。基准数据接入、任务冻结、独立验收、批量实验与报告留待负责评测的组员完成。
+- 数据集与评测：当前已有 5 个 QuixBugs 开发案例和简单结果汇总。更完整的基准接入、任务冻结、独立验收、批量实验与报告留待负责评测的组员完成。

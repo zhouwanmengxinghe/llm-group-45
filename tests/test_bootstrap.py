@@ -51,7 +51,7 @@ def test_existing_config_and_environment_are_preserved(tmp_path, monkeypatch):
     assert os.environ["PATCHLAB_API_KEY"] == "already-set"
 
 
-def test_launcher_starts_web_with_config_and_proxy(tmp_path, monkeypatch):
+def test_launcher_starts_web_with_config_and_inherits_environment(tmp_path, monkeypatch):
     config = tmp_path / "model.toml"
     config.write_text('[model]\nurl="https://example.test/chat"\nname="m"\n', encoding="utf-8")
     monkeypatch.setattr(bootstrap, "CONFIG", config)
@@ -59,6 +59,8 @@ def test_launcher_starts_web_with_config_and_proxy(tmp_path, monkeypatch):
     monkeypatch.setattr(bootstrap, "configure", lambda: None)
     monkeypatch.setattr(bootstrap.shutil, "which", lambda _: "git")
     monkeypatch.setattr(bootstrap.sys, "argv", ["bootstrap.py", "--no-browser", "--port", "9876"])
+    monkeypatch.setenv("PATCHLAB_TEST_INHERIT", "preserved")
+    original_env = dict(os.environ)
     seen = {}
     def start(command, **kwargs):
         seen.update(command=command, env=kwargs["env"])
@@ -67,5 +69,20 @@ def test_launcher_starts_web_with_config_and_proxy(tmp_path, monkeypatch):
     assert bootstrap.main() == 0
     assert seen["command"][1:4] == ["-m", "patchlab", "web"]
     assert str(config) in seen["command"] and "9876" in seen["command"]
-    assert seen["env"]["HTTPS_PROXY"] == "http://127.0.0.1:7890"
-    assert seen["env"]["NO_PROXY"] == "localhost,127.0.0.1,::1"
+    assert seen["env"] == original_env
+
+
+def test_dependency_install_inherits_environment(tmp_path, monkeypatch):
+    python = tmp_path / "python.exe"
+    python.touch()
+    monkeypatch.setattr(bootstrap, "PYTHON", python)
+    calls = []
+    class Result:
+        def __init__(self, code): self.returncode = code
+    def run(args, **kwargs):
+        calls.append((args, kwargs))
+        return Result(1 if len(calls) == 2 else 0)
+    monkeypatch.setattr(bootstrap.subprocess, "run", run)
+    bootstrap.ensure_environment()
+    assert calls[-1][0][1:4] == ["-m", "pip", "install"]
+    assert "env" not in calls[-1][1]
