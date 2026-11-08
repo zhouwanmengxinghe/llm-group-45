@@ -8,7 +8,7 @@ from patchlab.decision import ChatDecider
 def test_config_and_provider_request(tmp_path, monkeypatch):
     config = tmp_path / "model.toml"
     config.write_text('[model]\nurl="https://example.test/v1/chat/completions"\n'
-                      'name="model-one"\napi_key_env="TEST_MODEL_KEY"\n', encoding="utf-8")
+                      'name="model-one"\napi_key_env="TEST_MODEL_KEY"\nthinking="disabled"\n', encoding="utf-8")
     for name in ("PATCHLAB_API_URL", "PATCHLAB_MODEL"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("TEST_MODEL_KEY", "secret")
@@ -35,6 +35,7 @@ def test_config_and_provider_request(tmp_path, monkeypatch):
     assert captured["url"] == "https://example.test/v1/chat/completions"
     assert captured["auth"] == "Bearer secret"
     assert captured["payload"]["model"] == "model-one"
+    assert captured["payload"]["thinking"] == {"type": "disabled"}
     assert action["kind"] == "files" and usage["total_tokens"] == 17
     monkeypatch.setenv("PATCHLAB_MODEL", "model-two")
     assert ChatDecider(512, config).model == "model-two"

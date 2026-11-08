@@ -4,3 +4,5 @@ __pycache__/
 .env
 runs/
 .pytest_cache/
+configs/my-model.toml
+configs/.model-key

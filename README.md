@@ -4,6 +4,30 @@ PatchLab is an independent course project for comparing single-attempt and itera
 
 See [the proposal technology plan](docs/proposal-technology-plan.md) for section-by-section recommendations and English wording for the proposal.
 
+## Windows 一键启动
+
+安装 Python 3.12+ 和 Git 后，双击项目目录中的 `start.cmd`。首次启动会创建项目自己的 `.venv`、安装 pytest，并提供三种选项：默认使用 DeepSeek 官方 V4.1 Flash（只需输入 DeepSeek 官方 API 密钥）；选择其他兼容服务（输入完整接口地址、模型名称和密钥）；或暂不配置先打开页面。若选择保存密钥，Windows 会以当前用户身份加密后保存在 `configs/.model-key`；配置和密钥文件都不会提交到 Git。后续双击即可启动并打开浏览器。启动窗口运行本地 Python 服务和 Agent 控制器；关闭启动窗口会停止服务。
+
+DeepSeek 默认地址为 `https://api.deepseek.com/chat/completions`，模型名为 `deepseek-flash`，这是指向当前 Flash 版本的官方别名。默认设置关闭 DeepSeek thinking 模式，以适配目前的短输出上限和结构化动作；仍由 Agent 使用工具和测试反馈进行多步修复。该默认选项需要 DeepSeek 官方 API 密钥；HKU 或其他服务商的密钥应选“其他兼容服务”并使用其提供的地址和部署名。正式实验须记录官方别名实际对应的模型版本，别名可能随服务商更新。
+
+启动器默认通过本机 `http://127.0.0.1:7890` 代理安装依赖并访问模型，回环地址直接连接。首次安装需要能访问依赖来源；若代理不可用，启动会失败并提示检查。已有 `PATCHLAB_API_KEY` 环境变量优先于保存的密钥。更换模型可编辑 `configs/my-model.toml`；若其他服务商不支持 DeepSeek 的 thinking 参数，请删除 `thinking` 配置。更换已保存密钥可删除 `configs/.model-key` 后重新启动。也可以首次跳过模型设置先打开界面，但只有配置模型后才能对话或修复。
+
+命令行也可运行 `./start.cmd`；若默认 8765 端口被占用，可运行 `./start.cmd --port 8766`。启动器目前面向 Windows；以下手动命令仍然可用。
+
+## 本地工作台
+
+完成下面的 Python 环境安装和模型配置后，在当前 PowerShell 窗口设置好密钥与代理，运行：
+
+```powershell
+.\.venv\Scripts\python.exe -m patchlab web --model-config configs\my-model.toml
+```
+
+程序会打开本机浏览器；若没有自动打开，复制终端打印的完整地址。页面可进行普通对话，也可以选择「修复任务」，填写 Git 仓库、允许编辑的文件、定向测试和回归测试，然后发送缺陷描述。页面按步骤显示决策、检查和测试记录，并显示通过测试的补丁。当前页面自动验证候选补丁，不支持页面内人工审批；原仓库不会被修改。输入 Docker 镜像可以使用现有容器执行接口，否则必须明确选择信任本机测试。Docker 与真实模型仍需要在实际环境中联调验证。
+
+修复任务现在提供两种设置：**简易模式**填写项目路径和问题描述，可选填写操作步骤或启动命令；Agent 检查当前 Python 文件并尝试生成独立的 pytest 复现测试。只有原代码出现断言失败后才会验证候选补丁。简易模式在本机临时副本执行模型生成的测试，仅适合信任的项目；启动命令只作为模型线索，不会自动执行。它目前不支持自动操作 GUI、安装目标项目依赖或执行任意启动命令。项目无需是 Git 仓库，当前未提交的文件也会被复制；隐藏文件、虚拟环境和 Git 元数据不会复制。如果没有现成回归测试，结果会明确标记验证范围有限。**专业模式**沿用 Git 版本、允许修改文件和测试范围等设置。
+
+会话及完整事件保存在 `runs/sessions`，浏览器可在最近会话中切换。模型上下文使用最近 6 条对话，较早对话以限长摘录压缩；这是一种有损的本地压缩，不是模型生成的摘要。修复任务会附带限长对话上下文，同时继续使用任务内失败记忆。日志可能包含源码、测试输出和对话，请按项目情况保管。服务仅监听本机；不要向他人分享终端显示的访问地址。
+
 ## Offline demo
 
 Requires Python 3.12+, Git, and pytest. From this directory, using PowerShell:

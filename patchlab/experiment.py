@@ -35,6 +35,8 @@ def execute(
     task: Task, output: Path, model: Decider, runner: PytestRunner, *,
     mode: str = "feedback", calls: int = 16, attempts: int = 5,
     approve: Callable[[str, str], bool] | None = None,
+    event_sink: Callable[[dict], None] | None = None,
+    session_context: str = "",
 ) -> dict:
     output = output.resolve()
     if output.is_relative_to(task.repository.resolve()):
@@ -52,9 +54,11 @@ def execute(
     }
     with (output / "events.jsonl").open("w", encoding="utf-8") as events:
         def record(event: str, **details):
-            events.write(json.dumps({"event": event, "at_seconds": round(time.monotonic() - start, 3),
-                                     **details}, ensure_ascii=True) + "\n")
+            entry = {"event": event, "at_seconds": round(time.monotonic() - start, 3), **details}
+            events.write(json.dumps(entry, ensure_ascii=True) + "\n")
             events.flush()
+            if event_sink is not None:
+                event_sink(entry)
 
         try:
             with TemporaryDirectory(prefix="patchlab-") as temp:
@@ -84,6 +88,7 @@ def execute(
                 for _ in range(calls):
                     context = {
                         "issue": task.issue[:8000], "editable": task.editable,
+                        "session_context": session_context[:6000],
                         "initial_failure": initial["output"][-4500:],
                         "recent_inspection": list(observations),
                         "repair_feedback": history[-5:] if mode == "memory" else history[-1:],

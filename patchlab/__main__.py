@@ -55,6 +55,10 @@ def positive(value: str) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m patchlab")
     commands = parser.add_subparsers(dest="command", required=True)
+    web = commands.add_parser("web", help="Launch the local browser workspace.")
+    web.add_argument("--model-config", type=Path)
+    web.add_argument("--port", type=int, default=8765)
+    web.add_argument("--no-browser", action="store_true")
     demo = commands.add_parser("demo", help="Run the offline scripted fixture.")
     run = commands.add_parser("run", help="Ask a configured model to repair a Git revision.")
     for item in (run, demo):
@@ -79,6 +83,10 @@ def main() -> int:
     summary.add_argument("results", nargs="+", type=Path)
     args = parser.parse_args()
     try:
+        if args.command == "web":
+            from .web import serve
+            serve(args.model_config, args.port, not args.no_browser)
+            return 0
         if args.command == "summarize":
             print(json.dumps(summarize(args.results), indent=2))
             return 0
