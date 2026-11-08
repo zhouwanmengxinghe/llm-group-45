@@ -14,7 +14,20 @@ DeepSeek 默认地址为 `https://api.deepseek.com/chat/completions`，模型名
 
 首次安装需要能访问依赖来源。已有 `PATCHLAB_API_KEY` 环境变量优先于保存的密钥。更换模型可编辑 `configs/my-model.toml`；若其他服务商不支持 DeepSeek 的 thinking 参数，请删除 `thinking` 配置。更换已保存密钥可删除 `configs/.model-key` 后重新启动。也可以首次跳过模型设置先打开界面，但只有配置模型后才能对话或修复。
 
-命令行也可运行 `./start.cmd`；若默认 8765 端口被占用，可运行 `./start.cmd --port 8766`。启动器目前面向 Windows；以下手动命令仍然可用。
+命令行也可运行 `./start.cmd`；若默认 8765 端口被占用，可运行 `./start.cmd --port 8766`。
+
+## macOS 启动
+
+安装 Python 3.12+ 和 Git，打开“终端”进入项目目录，首次运行：
+
+```bash
+chmod +x start.command
+./start.command
+```
+
+之后可以双击 `start.command`。也可以直接在终端运行 `bash start.command`（无需修改执行权限），或运行 `bash start.command --port 8766` 指定端口。首次启动会创建 `.venv`、安装依赖并引导配置模型。macOS 版本不会把密钥写入文件：每次启动时输入，或在终端预先设置模型配置对应的密钥环境变量。请不要把密钥写入项目文件。关闭启动终端会停止本地服务。
+
+Windows 和 macOS 的 `.venv` 不能互相复制，请在各自电脑上分别安装。macOS 启动器经过模拟平台测试，尚未在真实 Mac 上验证；模型服务和目标项目的执行环境也需分别联调。
 
 ## 本地工作台
 

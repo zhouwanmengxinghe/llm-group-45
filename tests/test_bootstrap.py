@@ -9,6 +9,7 @@ def test_first_setup_and_saved_key(tmp_path, monkeypatch):
     secret = tmp_path / "key"
     monkeypatch.setattr(bootstrap, "CONFIG", config)
     monkeypatch.setattr(bootstrap, "SECRET", secret)
+    monkeypatch.setattr(bootstrap.sys, "platform", "win32")
     monkeypatch.delenv("PATCHLAB_API_KEY", raising=False)
     answers = iter(["2", "https://example.test/v1/chat/completions", "test-model", ""])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
@@ -86,3 +87,39 @@ def test_dependency_install_inherits_environment(tmp_path, monkeypatch):
     bootstrap.ensure_environment()
     assert calls[-1][0][1:4] == ["-m", "pip", "install"]
     assert "env" not in calls[-1][1]
+
+
+def test_macos_key_is_session_only_and_windows_secret_is_ignored(tmp_path, monkeypatch):
+    config = tmp_path / "model.toml"
+    config.write_text('[model]\nurl="https://example.test/chat"\nname="m"\n', encoding="utf-8")
+    secret = tmp_path / "key"
+    secret.write_text("windows-encrypted-value", encoding="utf-8")
+    monkeypatch.setattr(bootstrap, "CONFIG", config)
+    monkeypatch.setattr(bootstrap, "SECRET", secret)
+    monkeypatch.setattr(bootstrap.sys, "platform", "darwin")
+    monkeypatch.delenv("PATCHLAB_API_KEY", raising=False)
+    monkeypatch.setattr(bootstrap.getpass, "getpass", lambda _: "mac-session-key")
+    monkeypatch.setattr(bootstrap, "unprotect", lambda _: (_ for _ in ()).throw(AssertionError("Windows secret used")))
+    bootstrap.configure()
+    assert os.environ["PATCHLAB_API_KEY"] == "mac-session-key"
+    assert secret.read_text(encoding="utf-8") == "windows-encrypted-value"
+
+
+def test_macos_launcher_uses_unix_venv_and_config(tmp_path, monkeypatch):
+    config = tmp_path / "model.toml"
+    config.write_text('[model]\nurl="https://example.test/chat"\nname="m"\n', encoding="utf-8")
+    monkeypatch.setattr(bootstrap, "CONFIG", config)
+    monkeypatch.setattr(bootstrap, "PYTHON", tmp_path / ".venv" / "bin" / "python")
+    monkeypatch.setattr(bootstrap.sys, "platform", "darwin")
+    monkeypatch.setattr(bootstrap.sys, "argv", ["bootstrap.py", "--no-browser"])
+    monkeypatch.setattr(bootstrap, "ensure_environment", lambda: None)
+    monkeypatch.setattr(bootstrap, "configure", lambda: None)
+    monkeypatch.setattr(bootstrap.shutil, "which", lambda _: "git")
+    seen = {}
+    def start(command, **kwargs):
+        seen["command"] = command
+        return 0
+    monkeypatch.setattr(bootstrap.subprocess, "call", start)
+    assert bootstrap.main() == 0
+    assert seen["command"][0] == str(tmp_path / ".venv" / "bin" / "python")
+    assert str(config) in seen["command"]

@@ -1,4 +1,4 @@
-"""Windows first-run setup and local workbench launcher."""
+"""First-run setup and local workbench launcher for Windows and macOS."""
 from __future__ import annotations
 
 import argparse
@@ -16,7 +16,7 @@ import tomllib
 import venv
 
 ROOT = Path(__file__).resolve().parent
-PYTHON = ROOT / ".venv" / "Scripts" / "python.exe"
+PYTHON = ROOT / ".venv" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
 CONFIG = ROOT / "configs" / "my-model.toml"
 SECRET = ROOT / "configs" / ".model-key"
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
@@ -87,7 +87,7 @@ def configure() -> None:
         raise ValueError("模型配置中的 api_key_env 无效。")
     if os.environ.get(key_name):
         return
-    if key_name == "PATCHLAB_API_KEY" and SECRET.exists():
+    if sys.platform == "win32" and key_name == "PATCHLAB_API_KEY" and SECRET.exists():
         try:
             os.environ[key_name] = unprotect(SECRET.read_text(encoding="utf-8"))
         except (OSError, ValueError, UnicodeError) as exc:
@@ -99,10 +99,12 @@ def configure() -> None:
     if not key:
         return
     os.environ[key_name] = key
-    if key_name == "PATCHLAB_API_KEY":
+    if sys.platform == "win32" and key_name == "PATCHLAB_API_KEY":
         answer = input("是否在当前 Windows 用户下加密保存密钥，方便下次启动？[Y/n] ").strip().lower()
         if answer in ("", "y", "yes"):
             SECRET.write_text(protect(key), encoding="utf-8")
+    elif sys.platform == "darwin":
+        print("密钥只用于本次运行；下次启动可重新输入或设置环境变量。")
 
 
 def ensure_environment() -> None:
@@ -127,8 +129,8 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
-    if sys.platform != "win32":
-        raise RuntimeError("该启动器目前仅支持 Windows。")
+    if sys.platform not in ("win32", "darwin"):
+        raise RuntimeError("该启动器目前支持 Windows 和 macOS。")
     if sys.version_info < (3, 12):
         raise RuntimeError("请安装 Python 3.12 或更高版本，并确保 python 命令可用。")
     if shutil.which("git") is None:
