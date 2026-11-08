@@ -12,6 +12,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 import tomllib
 import venv
 
@@ -19,6 +20,7 @@ ROOT = Path(__file__).resolve().parent
 PYTHON = ROOT / ".venv" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
 CONFIG = ROOT / "configs" / "my-model.toml"
 SECRET = ROOT / "configs" / ".model-key"
+MAC_SECRET = ROOT / "configs" / ".macos-keys.json"
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 DEEPSEEK_MODEL = "deepseek-flash"
 
@@ -55,6 +57,29 @@ def unprotect(cipher: str) -> str:
     return crypt_bytes(base64.b64decode(cipher, validate=True), decrypt=True).decode("utf-8")
 
 
+def read_mac_keys() -> dict[str, str]:
+    if not MAC_SECRET.exists():
+        return {}
+    data = json.loads(MAC_SECRET.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in data.items()):
+        raise ValueError("本地密钥文件格式无效，请检查 configs/.macos-keys.json。")
+    return data
+
+
+def save_mac_key(name: str, key: str) -> None:
+    keys = read_mac_keys()
+    keys[name] = key
+    # mkstemp creates a private file (0600 on macOS); replace avoids partial writes.
+    fd, temp_name = tempfile.mkstemp(prefix=".macos-key-", dir=MAC_SECRET.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(keys, stream, ensure_ascii=False)
+        os.replace(temp_name, MAC_SECRET)
+    finally:
+        if os.path.exists(temp_name):
+            os.unlink(temp_name)
+
+
 def configure() -> None:
     if not CONFIG.exists():
         print("\n首次使用：请选择模型服务。")
@@ -87,6 +112,11 @@ def configure() -> None:
         raise ValueError("模型配置中的 api_key_env 无效。")
     if os.environ.get(key_name):
         return
+    if sys.platform == "darwin":
+        saved_key = read_mac_keys().get(key_name, "")
+        if saved_key:
+            os.environ[key_name] = saved_key
+            return
     if sys.platform == "win32" and key_name == "PATCHLAB_API_KEY" and SECRET.exists():
         try:
             os.environ[key_name] = unprotect(SECRET.read_text(encoding="utf-8"))
@@ -104,7 +134,12 @@ def configure() -> None:
         if answer in ("", "y", "yes"):
             SECRET.write_text(protect(key), encoding="utf-8")
     elif sys.platform == "darwin":
-        print("密钥只用于本次运行；下次启动可重新输入或设置环境变量。")
+        answer = input("是否将密钥以明文保存在本机项目目录，下次自动读取？[y/N] ").strip().lower()
+        if answer in ("y", "yes"):
+            save_mac_key(key_name, key)
+            print("已保存到 configs/.macos-keys.json（仅当前用户可读写，文件不会提交到 Git）。")
+        else:
+            print("密钥只用于本次运行。")
 
 
 def ensure_environment() -> None:

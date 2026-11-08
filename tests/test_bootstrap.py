@@ -26,6 +26,7 @@ def test_default_deepseek_needs_only_key(tmp_path, monkeypatch):
     config = tmp_path / "model.toml"
     monkeypatch.setattr(bootstrap, "CONFIG", config)
     monkeypatch.setattr(bootstrap, "SECRET", tmp_path / "key")
+    monkeypatch.setattr(bootstrap.sys, "platform", "win32")
     monkeypatch.delenv("PATCHLAB_API_KEY", raising=False)
     answers = iter(["", "n"])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
@@ -96,13 +97,34 @@ def test_macos_key_is_session_only_and_windows_secret_is_ignored(tmp_path, monke
     secret.write_text("windows-encrypted-value", encoding="utf-8")
     monkeypatch.setattr(bootstrap, "CONFIG", config)
     monkeypatch.setattr(bootstrap, "SECRET", secret)
+    monkeypatch.setattr(bootstrap, "MAC_SECRET", tmp_path / "mac-keys.json")
     monkeypatch.setattr(bootstrap.sys, "platform", "darwin")
     monkeypatch.delenv("PATCHLAB_API_KEY", raising=False)
     monkeypatch.setattr(bootstrap.getpass, "getpass", lambda _: "mac-session-key")
+    monkeypatch.setattr("builtins.input", lambda _: "n")
     monkeypatch.setattr(bootstrap, "unprotect", lambda _: (_ for _ in ()).throw(AssertionError("Windows secret used")))
     bootstrap.configure()
     assert os.environ["PATCHLAB_API_KEY"] == "mac-session-key"
     assert secret.read_text(encoding="utf-8") == "windows-encrypted-value"
+    assert not bootstrap.MAC_SECRET.exists()
+
+
+def test_macos_can_save_and_reload_key(tmp_path, monkeypatch):
+    config = tmp_path / "model.toml"
+    config.write_text('[model]\nurl="https://example.test/chat"\nname="m"\n', encoding="utf-8")
+    local_keys = tmp_path / "mac-keys.json"
+    monkeypatch.setattr(bootstrap, "CONFIG", config)
+    monkeypatch.setattr(bootstrap, "MAC_SECRET", local_keys)
+    monkeypatch.setattr(bootstrap.sys, "platform", "darwin")
+    monkeypatch.delenv("PATCHLAB_API_KEY", raising=False)
+    monkeypatch.setattr(bootstrap.getpass, "getpass", lambda _: "saved-test-key")
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+    bootstrap.configure()
+    assert bootstrap.read_mac_keys()["PATCHLAB_API_KEY"] == "saved-test-key"
+    monkeypatch.delenv("PATCHLAB_API_KEY")
+    monkeypatch.setattr(bootstrap.getpass, "getpass", lambda _: (_ for _ in ()).throw(AssertionError("unexpected prompt")))
+    bootstrap.configure()
+    assert os.environ["PATCHLAB_API_KEY"] == "saved-test-key"
 
 
 def test_macos_launcher_uses_unix_venv_and_config(tmp_path, monkeypatch):

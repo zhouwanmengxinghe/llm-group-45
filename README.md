@@ -25,7 +25,7 @@ chmod +x start.command
 ./start.command
 ```
 
-之后可以双击 `start.command`。也可以直接在终端运行 `bash start.command`（无需修改执行权限），或运行 `bash start.command --port 8766` 指定端口。首次启动会创建 `.venv`、安装依赖并引导配置模型。macOS 版本不会把密钥写入文件：每次启动时输入，或在终端预先设置模型配置对应的密钥环境变量。请不要把密钥写入项目文件。关闭启动终端会停止本地服务。
+之后可以双击 `start.command`。也可以直接在终端运行 `bash start.command`（无需修改执行权限），或运行 `bash start.command --port 8766` 指定端口。首次启动会创建 `.venv`、安装依赖并引导配置模型。输入密钥后可选择保存到 `configs/.macos-keys.json`，下次自动读取；选择不保存则只在本次运行中使用，也可通过环境变量提供。该文件在 macOS 上以仅当前用户可读写的权限创建，已被 Git 忽略，但**内容是明文，并非加密**；不要分享或提交这个文件。关闭启动终端会停止本地服务。
 
 Windows 和 macOS 的 `.venv` 不能互相复制，请在各自电脑上分别安装。macOS 启动器经过模拟平台测试，尚未在真实 Mac 上验证；模型服务和目标项目的执行环境也需分别联调。
 

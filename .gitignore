@@ -6,3 +6,5 @@ runs/
 .pytest_cache/
 configs/my-model.toml
 configs/.model-key
+configs/.macos-keys.json
+configs/.macos-key-*

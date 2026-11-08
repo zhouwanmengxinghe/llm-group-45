@@ -42,7 +42,7 @@ Windows 上需要 Python 3.12+ 和 Git。双击 `start.cmd`，或运行 `./start
 
 `PATCHLAB_API_URL`、`PATCHLAB_MODEL` 环境变量会覆盖配置文件的 URL 和模型名；API Key 环境变量优先于本地保存的密钥。HKU 等其他供应商需使用其自己的接口、部署名和密钥。
 
-macOS 上安装 Python 3.12+ 和 Git 后，在项目目录运行 `bash start.command`；也可以首次运行 `chmod +x start.command` 后双击该文件。首次启动会创建独立环境并引导选择模型。macOS 不会在项目中保存密钥，需要每次输入，或在终端预先设置配置文件指定的密钥环境变量。Windows 和 macOS 应分别创建 `.venv`，不要互相复制虚拟环境。
+macOS 上安装 Python 3.12+ 和 Git 后，在项目目录运行 `bash start.command`；也可以首次运行 `chmod +x start.command` 后双击该文件。首次启动会创建独立环境并引导选择模型。输入密钥时可以选择保存在 `configs/.macos-keys.json`，下次自动读取；也可不保存，或通过环境变量提供。该文件创建时仅当前用户可读写并被 Git 忽略，但内容为明文，不能分享或提交。Windows 和 macOS 应分别创建 `.venv`，不要互相复制虚拟环境。
 
 Windows 启动器和本地浏览器服务已在原开发电脑做过基本验证；macOS 启动流程目前只有模拟平台测试，尚未在真实 Mac 上验证。其他电脑的 Python、网络、模型和 Docker 环境仍需要各自联调。
 
