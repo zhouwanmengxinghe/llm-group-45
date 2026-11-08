@@ -1,0 +1,6 @@
+# Copy this file, then set the complete chat-completions endpoint and model name.
+# Never put the API key here; set the named environment variable instead.
+[model]
+url = "https://provider.example/v1/chat/completions"
+name = "replace-with-deployment-name"
+api_key_env = "PATCHLAB_API_KEY"
