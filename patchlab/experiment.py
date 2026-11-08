@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass
 from hashlib import sha256
 import json
@@ -13,6 +12,8 @@ import time
 from typing import Callable, Protocol
 
 from .workbench import PytestRunner, Workbench, snapshot
+from .resilience import retry
+from .memory import compact_evidence
 
 
 class Decider(Protocol):
@@ -61,6 +62,8 @@ def execute(
                 event_sink(entry)
 
         try:
+            if hasattr(model, "on_retry"):
+                model.on_retry = lambda info: record("model_retry", **info)
             with TemporaryDirectory(prefix="patchlab-") as temp:
                 area = Path(temp)
                 frozen = area / "frozen"
@@ -81,16 +84,20 @@ def execute(
                     result["status"] = "bug_not_reproduced" if initial["exit_code"] == 0 else "initial_test_error"
                     return result
 
-                observations: deque[dict] = deque(maxlen=4)
+                observations: list[dict] = []
                 history: list[dict] = []
+                evidence_summary = ""
                 limit = result["attempt_limit"]
                 seen: set[str] = set()
                 for _ in range(calls):
+                    evidence_summary, observations, history = compact_evidence(
+                        model, evidence_summary, observations, history if mode == "memory" else history[-1:], record)
                     context = {
                         "issue": task.issue[:8000], "editable": task.editable,
-                        "session_context": session_context[:6000],
+                        "session_context": session_context,
                         "initial_failure": initial["output"][-4500:],
                         "recent_inspection": list(observations),
+                        "evidence_summary": evidence_summary,
                         "repair_feedback": history[-5:] if mode == "memory" else history[-1:],
                         "proposals_remaining": limit - result["attempts"],
                     }
@@ -110,8 +117,9 @@ def execute(
                         if kind in ("files", "search", "read"):
                             result["inspection_calls"] += 1
                         try:
-                            evidence = bench.inspect(action)
-                        except ValueError as exc:
+                            evidence = retry(lambda: bench.inspect(action),
+                                             on_retry=lambda info: record("tool_retry", tool=kind, **info))
+                        except (ValueError, OSError) as exc:
                             evidence = {"error": str(exc)}
                         observations.append({"request": action, "response": evidence})
                         record("inspection", **evidence)

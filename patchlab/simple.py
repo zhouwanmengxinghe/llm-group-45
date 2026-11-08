@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import ast
-from collections import deque
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -13,6 +12,8 @@ import time
 from typing import Callable
 
 from .workbench import Workbench, PytestRunner
+from .resilience import retry
+from .memory import compact_evidence
 
 
 EXCLUDE = {".git", ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache", "runs", "dist", "build"}
@@ -80,6 +81,8 @@ def execute_simple(repo: Path, issue: str, steps: str, output: Path, model, runn
             if event_sink:
                 event_sink(entry)
         try:
+            if hasattr(model, "on_retry"):
+                model.on_retry = lambda info: record("model_retry", **info)
             with tempfile.TemporaryDirectory(prefix="patchlab-simple-") as tmp:
                 area = Path(tmp)
                 frozen = area / "source"
@@ -87,14 +90,18 @@ def execute_simple(repo: Path, issue: str, steps: str, output: Path, model, runn
                 allowed = editable_files(frozen)
                 bench = Workbench(frozen, allowed)
                 record("started", mode="simple", editable_count=len(allowed))
-                observations = deque(maxlen=6)
-                feedback = deque(maxlen=5)
+                observations = []
+                feedback = []
+                evidence_summary = ""
                 repro = None
                 for _ in range(calls):
+                    evidence_summary, observations, feedback = compact_evidence(
+                        model, evidence_summary, observations, feedback, record)
                     context = {"workflow": "simple", "issue": issue[:8000], "user_steps": steps[:4000],
-                               "session_context": session_context[-6000:], "editable": allowed[:300],
+                               "session_context": session_context, "editable": allowed[:300],
                                "recent_inspection": list(observations), "repair_feedback": list(feedback),
-                               "reproducer_confirmed": repro is not None}
+                               "evidence_summary": evidence_summary,
+                               "reproducer_confirmed": repro is not None, "reproducer": repro}
                     result["model_calls"] += 1
                     action, usage = model.decide(context)
                     record("decision", action=action, usage=usage)
@@ -104,8 +111,9 @@ def execute_simple(repo: Path, issue: str, steps: str, output: Path, model, runn
                         break
                     if kind in ("files", "search", "read"):
                         try:
-                            evidence = bench.inspect(action)
-                        except ValueError as exc:
+                            evidence = retry(lambda: bench.inspect(action),
+                                             on_retry=lambda info: record("tool_retry", tool=kind, **info))
+                        except (ValueError, OSError) as exc:
                             evidence = {"error": str(exc)}
                         observations.append({"request": action, "response": evidence})
                         record("inspection", **evidence)
