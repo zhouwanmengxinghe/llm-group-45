@@ -91,8 +91,9 @@ def test_container_python_is_bounded():
         PytestRunner(None, 30, "/usr/bin/python")
     runner = PytestRunner(
         "image:local", 30, "/opt/conda/envs/testbed/bin/python",
-        ["bin/test", "-C", "--no-colors"],
+        ["bin/test", "-C", "--no-colors"], ["-k", "test_public"],
     )
     assert runner.test_program == ["bin/test", "-C", "--no-colors"]
+    assert runner.test_suffix == ["-k", "test_public"]
     with pytest.raises(ValueError, match="without shell syntax"):
         PytestRunner("image:local", 30, test_program=["bin/test", ";", "id"])

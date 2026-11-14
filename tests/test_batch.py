@@ -100,3 +100,23 @@ def test_swebench_manifest_withholds_scoring_target(tmp_path):
     manifest.write_text(json.dumps(bad), encoding="utf-8")
     with pytest.raises(ValueError, match="must remain withheld"):
         load_manifest(manifest)
+
+
+def test_manifest_accepts_per_task_runner(tmp_path):
+    repo = tmp_path / "repo"
+    make_fixture(repo)
+    manifest = tmp_path / "tasks.json"
+    write_manifest(manifest, repo)
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["tasks"][0]["runner"] = {
+        "image": "project:test",
+        "container_python": "/opt/env/bin/python",
+        "test_program": ["bin/test", "-C"],
+        "test_suffix": ["-k", "test_public"],
+    }
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    item = load_manifest(manifest)[0]
+    assert item.image == "project:test"
+    assert item.container_python == "/opt/env/bin/python"
+    assert item.test_program == ["bin/test", "-C"]
+    assert item.test_suffix == ["-k", "test_public"]

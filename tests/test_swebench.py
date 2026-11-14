@@ -127,6 +127,9 @@ def test_manifest_uses_issue_but_withholds_scoring_tests(tmp_path):
         "repository": "/safe/repository",
         "editable": ["package/code.py"],
         "suite": ["tests/test_public.py"],
+        "container_python": "/opt/conda/envs/testbed/bin/python",
+        "test_program": ["bin/test", "-C", "--no-colors"],
+        "test_suffix": ["-k", "test_public"],
     }]}), encoding="utf-8")
 
     manifest = write_patchlab_manifest(
@@ -136,3 +139,6 @@ def test_manifest_uses_issue_but_withholds_scoring_tests(tmp_path):
     assert task["issue"] == "Public issue text."
     assert task["target"] == []
     assert task["evaluation"] == "swebench"
+    assert task["runner"]["image"] == "swebench/demo:latest"
+    assert task["runner"]["test_program"] == ["bin/test", "-C", "--no-colors"]
+    assert task["runner"]["test_suffix"] == ["-k", "test_public"]

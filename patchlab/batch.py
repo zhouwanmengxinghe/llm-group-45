@@ -24,6 +24,10 @@ TASK_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}")
 class BatchTask:
     task_id: str
     task: Task
+    image: str | None = None
+    container_python: str = "python"
+    test_program: list[str] | None = None
+    test_suffix: list[str] | None = None
 
 
 def _strings(value: object, field: str) -> list[str]:
@@ -55,6 +59,7 @@ def load_manifest(path: Path) -> list[BatchTask]:
         issue = row.get("issue")
         revision = row.get("revision", "HEAD")
         evaluation = row.get("evaluation", "supplied_tests")
+        runner = row.get("runner", {})
         if not isinstance(task_id, str) or not TASK_ID.fullmatch(task_id) or task_id in seen:
             raise ValueError(f"invalid or duplicate task id: {task_id}")
         if not isinstance(repository, str) or not repository:
@@ -71,19 +76,47 @@ def load_manifest(path: Path) -> list[BatchTask]:
             raise ValueError(f"task {task_id}: supplied-tests evaluation needs a target")
         if evaluation == "swebench" and target:
             raise ValueError(f"task {task_id}: SWE-bench scoring tests must remain withheld")
-        tasks.append(BatchTask(task_id, Task(
-            repo, revision, issue.strip(), _strings(row.get("editable"), "editable"),
-            target, _strings(row.get("suite"), "suite"),
-            "swebench" if evaluation == "swebench" else None,
-        )))
+        if not isinstance(runner, dict):
+            raise ValueError(f"task {task_id}: runner must be an object")
+        image = runner.get("image")
+        container_python = runner.get("container_python", "python")
+        test_program = runner.get("test_program")
+        test_suffix = runner.get("test_suffix")
+        if image is not None and (not isinstance(image, str) or not image):
+            raise ValueError(f"task {task_id}: runner.image must be a string")
+        if not isinstance(container_python, str) or not container_python:
+            raise ValueError(f"task {task_id}: runner.container_python must be a string")
+        if test_program is not None:
+            test_program = _strings(test_program, "runner.test_program")
+        if test_suffix is not None:
+            test_suffix = _strings(test_suffix, "runner.test_suffix")
+        tasks.append(BatchTask(
+            task_id,
+            Task(
+                repo, revision, issue.strip(), _strings(row.get("editable"), "editable"),
+                target, _strings(row.get("suite"), "suite"),
+                "swebench" if evaluation == "swebench" else None,
+            ),
+            image, container_python, test_program, test_suffix,
+        ))
         seen.add(task_id)
     return tasks
+
+
+def _task_runner(item: BatchTask, default: PytestRunner) -> PytestRunner:
+    if item.image is None:
+        return default
+    return PytestRunner(
+        item.image, default.timeout, item.container_python, item.test_program,
+        item.test_suffix,
+    )
 
 
 def validate_tasks(tasks: list[BatchTask], runner: PytestRunner) -> list[dict]:
     """Check revisions, editable paths, selectors, and initial reproduction."""
     results = []
     for item in tasks:
+        task_runner = _task_runner(item, runner)
         row = {"task_id": item.task_id, "status": "invalid"}
         try:
             with TemporaryDirectory(prefix="patchlab-validate-") as temp:
@@ -98,12 +131,12 @@ def validate_tasks(tasks: list[BatchTask], runner: PytestRunner) -> list[dict]:
                 check = Path(temp) / "initial"
                 shutil.copytree(frozen, check)
                 if item.task.external_evaluation:
-                    initial = runner.run(check, item.task.suite)
+                    initial = task_runner.run(check, item.task.suite)
                     row["initial_public_suite"] = initial
-                    if initial["timed_out"] or initial["exit_code"] not in {0, 1}:
-                        raise ValueError("public suite must run with pytest exit code 0 or 1")
+                    if initial["timed_out"] or initial["exit_code"] != 0:
+                        raise ValueError("public regression suite must pass before repair")
                 else:
-                    initial = runner.run(check, item.task.target)
+                    initial = task_runner.run(check, item.task.target)
                     row["initial_target"] = initial
                     if initial["timed_out"] or initial["exit_code"] != 1:
                         raise ValueError("target must reproduce the bug with pytest exit code 1")
@@ -130,11 +163,12 @@ def run_batch(
     output.mkdir(parents=True, exist_ok=False)
     runs = []
     for item in tasks:
+        task_runner = _task_runner(item, runner)
         for mode in modes:
             for repeat in range(1, repeats + 1):
                 run_dir = output / item.task_id / mode / f"run-{repeat:02d}"
                 result = execute(
-                    item.task, run_dir, model_factory(), runner, mode=mode,
+                    item.task, run_dir, model_factory(), task_runner, mode=mode,
                     calls=calls, attempts=attempts,
                 )
                 runs.append({

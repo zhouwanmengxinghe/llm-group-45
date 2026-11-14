@@ -145,32 +145,35 @@ class Workbench:
 class PytestRunner:
     def __init__(
         self, image: str | None, timeout: int, python_executable: str = "python",
-        test_program: list[str] | None = None,
+        test_program: list[str] | None = None, test_suffix: list[str] | None = None,
     ):
         if not isinstance(python_executable, str) or not re.fullmatch(r"(?:python|/[A-Za-z0-9_./-]+)", python_executable):
             raise ValueError("container Python must be 'python' or a safe absolute path")
         if image is None and python_executable != "python":
             raise ValueError("a custom Python executable is only valid for a container image")
-        if test_program is not None and (
-            not test_program
-            or not all(
+        def valid_arguments(tokens: list[str] | None, *, allow_empty: bool) -> bool:
+            return tokens is None or (
+                (allow_empty or bool(tokens))
+                and all(
                 isinstance(token, str)
                 and re.fullmatch(r"[A-Za-z0-9_./=:+-]+", token)
                 and ".." not in PurePosixPath(token).parts
-                for token in test_program
+                    for token in tokens
+                )
             )
-        ):
+        if not valid_arguments(test_program, allow_empty=False) or not valid_arguments(test_suffix, allow_empty=True):
             raise ValueError("test program must contain bounded command arguments without shell syntax")
         self.image = image
         self.timeout = timeout
         self.python_executable = python_executable
         self.test_program = list(test_program) if test_program else None
+        self.test_suffix = list(test_suffix) if test_suffix else []
 
     def run(self, root: Path, selectors: list[str]) -> dict:
         import sys
 
         base = (
-            [*self.test_program, *selectors]
+            [*self.test_program, *selectors, *self.test_suffix]
             if self.test_program else
             ["-B", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--", *selectors]
         )

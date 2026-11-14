@@ -55,6 +55,7 @@ def execute(
         "target": task.target, "suite": task.suite, "container_image": runner.image,
         "container_python": runner.python_executable,
         "test_program": runner.test_program,
+        "test_suffix": runner.test_suffix,
         "external_evaluation": task.external_evaluation,
     }
     with (output / "events.jsonl").open("w", encoding="utf-8") as events:
@@ -87,7 +88,7 @@ def execute(
                     initial = runner.run(check, task.suite)
                     record("initial_public_suite", **initial)
                     result["initial_public_suite"] = initial
-                    if initial["timed_out"] or initial["exit_code"] not in {0, 1}:
+                    if initial["timed_out"] or initial["exit_code"] != 0:
                         result["status"] = "initial_test_error"
                         return result
                 else:

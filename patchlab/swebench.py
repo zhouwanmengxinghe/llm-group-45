@@ -194,6 +194,12 @@ def write_patchlab_manifest(lock_path: Path, workspace_path: Path, output: Path)
             "target": [],
             "suite": workspace_row["suite"],
             "evaluation": "swebench",
+            "runner": {
+                "image": instance["image"],
+                "container_python": workspace_row.get("container_python", "python"),
+                "test_program": workspace_row.get("test_program"),
+                "test_suffix": workspace_row.get("test_suffix"),
+            },
         })
     manifest = {
         "name": "SWE-bench Verified pilot (external official evaluation)",
