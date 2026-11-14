@@ -143,14 +143,37 @@ class Workbench:
 
 
 class PytestRunner:
-    def __init__(self, image: str | None, timeout: int):
+    def __init__(
+        self, image: str | None, timeout: int, python_executable: str = "python",
+        test_program: list[str] | None = None,
+    ):
+        if not isinstance(python_executable, str) or not re.fullmatch(r"(?:python|/[A-Za-z0-9_./-]+)", python_executable):
+            raise ValueError("container Python must be 'python' or a safe absolute path")
+        if image is None and python_executable != "python":
+            raise ValueError("a custom Python executable is only valid for a container image")
+        if test_program is not None and (
+            not test_program
+            or not all(
+                isinstance(token, str)
+                and re.fullmatch(r"[A-Za-z0-9_./=:+-]+", token)
+                and ".." not in PurePosixPath(token).parts
+                for token in test_program
+            )
+        ):
+            raise ValueError("test program must contain bounded command arguments without shell syntax")
         self.image = image
         self.timeout = timeout
+        self.python_executable = python_executable
+        self.test_program = list(test_program) if test_program else None
 
     def run(self, root: Path, selectors: list[str]) -> dict:
         import sys
 
-        base = ["-B", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--", *selectors]
+        base = (
+            [*self.test_program, *selectors]
+            if self.test_program else
+            ["-B", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--", *selectors]
+        )
         container = "patchlab-" + uuid4().hex
         if self.image:
             command = [
@@ -160,7 +183,7 @@ class PytestRunner:
                 "--pids-limit", "128", "--tmpfs", "/tmp:rw,nosuid,nodev,size=128m",
                 "--mount", f"type=bind,source={root},target=/repo,readonly",
                 "--workdir", "/repo", "--env", "HOME=/tmp",
-                "--entrypoint", "python", self.image, *base,
+                "--entrypoint", self.python_executable, self.image, *base,
             ]
             env = os.environ.copy()
         else:

@@ -80,3 +80,19 @@ def test_test_files_and_outside_paths_cannot_be_edited(tmp_path):
     for path in ("test_code.py", "../code.py", str(Path(tmp_path) / "code.py")):
         with pytest.raises(ValueError):
             bench.prepare([{"path": path, "before": "1", "after": "2"}])
+
+
+def test_container_python_is_bounded():
+    runner = PytestRunner("image:local", 30, "/opt/conda/envs/testbed/bin/python")
+    assert runner.python_executable.endswith("/python")
+    with pytest.raises(ValueError, match="safe absolute path"):
+        PytestRunner("image:local", 30, "python -c")
+    with pytest.raises(ValueError, match="only valid"):
+        PytestRunner(None, 30, "/usr/bin/python")
+    runner = PytestRunner(
+        "image:local", 30, "/opt/conda/envs/testbed/bin/python",
+        ["bin/test", "-C", "--no-colors"],
+    )
+    assert runner.test_program == ["bin/test", "-C", "--no-colors"]
+    with pytest.raises(ValueError, match="without shell syntax"):
+        PytestRunner("image:local", 30, test_program=["bin/test", ";", "id"])

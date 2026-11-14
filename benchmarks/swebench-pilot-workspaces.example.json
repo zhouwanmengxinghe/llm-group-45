@@ -9,16 +9,6 @@
       "suite": [
         "REPLACE_WITH_PUBLIC_REGRESSION_TEST.py"
       ]
-    },
-    {
-      "instance_id": "astropy__astropy-14309",
-      "repository": "/absolute/path/to/astropy-checkout",
-      "editable": [
-        "REPLACE_WITH_OPERATOR_SELECTED_PYTHON_SOURCE.py"
-      ],
-      "suite": [
-        "REPLACE_WITH_PUBLIC_REGRESSION_TEST.py"
-      ]
     }
   ]
 }

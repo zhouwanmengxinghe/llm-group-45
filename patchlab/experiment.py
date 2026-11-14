@@ -53,6 +53,8 @@ def execute(
         "completion_limit": getattr(model, "completion_limit", None),
         "test_timeout": runner.timeout, "approval_enabled": approve is not None,
         "target": task.target, "suite": task.suite, "container_image": runner.image,
+        "container_python": runner.python_executable,
+        "test_program": runner.test_program,
         "external_evaluation": task.external_evaluation,
     }
     with (output / "events.jsonl").open("w", encoding="utf-8") as events:

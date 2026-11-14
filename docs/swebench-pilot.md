@@ -9,8 +9,14 @@ output. A patch that preserves the public suite is recorded as
 the task resolved.
 
 No live SWE-bench task has been run yet. The files and commands below prepare a
-two-instance pilot and deliberately stop before Docker image construction,
-model calls, or official evaluation.
+single-instance pilot and deliberately stop before model calls or official
+evaluation.
+
+The public-suite environment check completed on 2026-11-14 using Docker Desktop
+on an ARM64 Mac with the upstream AMD64 image under emulation. SymPy's public
+`test_basic.py`, `test_symbol.py`, and `test_boolalg.py` suites completed in
+about 34 seconds: 103 passed, 1 skipped, and 1 expected failure. This validates
+the generation environment only; it is not a model result or official score.
 
 ## Frozen pilot
 
@@ -21,11 +27,10 @@ The pilot selection is stored in
 - dataset revision: `78f471bf655a3137b2e8a75af1501690ec009ec3`;
 - upstream task repository revision:
   `3d07b464b7b311a0cbfb5ed5b2d8a3b96f84a33d`;
-- instances: `sympy__sympy-20590` and `astropy__astropy-14309`.
+- instance: `sympy__sympy-20590`.
 
-The first instance is the upstream quick-start example. The second is labelled
-as a short task by the dataset. These two tasks are an infrastructure pilot,
-not a representative or final sample.
+This is the upstream quick-start example. It is an infrastructure pilot, not a
+representative or final sample.
 
 `benchmarks/swebench-pilot-lock.json` was generated from a sparse checkout of
 the pinned official task repository. The lock contains only public metadata and
@@ -69,12 +74,15 @@ tests, so it belongs to the test phase and has not been executed yet.
 ```bash
 python -m patchlab validate-manifest \
   --manifest /path/to/swebench-pilot-manifest.json \
-  --image UPSTREAM_INSTANCE_IMAGE
+  --image swebench/sweb.eval.x86_64.sympy_1776_sympy-20590:latest \
+  --container-python /opt/miniconda3/envs/testbed/bin/python \
+  --test-program "bin/test -C --no-colors"
 ```
 
-The two instances use different upstream images, while PatchLab's current batch
-command accepts one image for a batch. Run each task in a one-task manifest for
-the pilot, or add per-task image selection before a multi-repository batch.
+The pilot uses the instance image recorded in the lock. Its Conda interpreter
+is selected with `--container-python /opt/miniconda3/envs/testbed/bin/python`.
+SymPy 1.7 does not include pytest in this image, so its public tests use the
+repository's bounded `bin/test` program.
 
 ## Export and official evaluation
 
