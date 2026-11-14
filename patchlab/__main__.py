@@ -10,7 +10,7 @@ from statistics import median
 import sys
 
 from .decision import ChatDecider
-from .batch import load_manifest, run_batch, validate_tasks
+from .batch import load_manifest, report_batch, run_batch, validate_tasks
 from .demo import run_demo
 from .experiment import Task, execute
 from .workbench import PytestRunner
@@ -101,6 +101,8 @@ def main() -> int:
     batch_executor = batch.add_mutually_exclusive_group(required=True)
     batch_executor.add_argument("--image")
     batch_executor.add_argument("--trusted-local", action="store_true")
+    batch_report = commands.add_parser("batch-report", help="Rebuild CSV and summary files for a batch.")
+    batch_report.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     try:
         if args.command == "web":
@@ -123,6 +125,9 @@ def main() -> int:
                 calls=args.calls, attempts=args.attempts,
             )
             print(json.dumps(result, indent=2))
+            return 0
+        if args.command == "batch-report":
+            print(json.dumps(report_batch(args.output), indent=2))
             return 0
         runner = PytestRunner(args.image, args.timeout)
         gate = approve if args.approve else None

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from patchlab.batch import load_manifest, run_batch, validate_tasks
+from patchlab.batch import load_manifest, report_batch, run_batch, validate_tasks
 from patchlab.demo import Demonstrator, make_fixture
 from patchlab.workbench import PytestRunner
 
@@ -31,13 +31,23 @@ def test_manifest_validation_and_batch_run(tmp_path):
     checked = validate_tasks(tasks, runner)
     assert checked[0]["status"] == "valid"
 
+    batch_dir = tmp_path / "batch"
     summary = run_batch(
-        tasks, tmp_path / "batch", Demonstrator, runner,
+        tasks, batch_dir, Demonstrator, runner,
         modes=["feedback"], repeats=1,
     )
     assert summary["verified"] == 1
     assert summary["runs"][0]["status"] == "verified"
-    assert (tmp_path / "batch" / "batch.json").exists()
+    assert not Path(summary["runs"][0]["result"]).is_absolute()
+    assert (batch_dir / "batch.json").exists()
+    assert (batch_dir / "runs.csv").exists()
+    assert (batch_dir / "summary.json").exists()
+
+    moved = tmp_path / "moved-batch"
+    batch_dir.rename(moved)
+    report = report_batch(moved)
+    assert report["modes"][0]["verified_rate"] == 1.0
+    assert report["modes"][0]["recovered_after_failed_candidate"] == 1
 
 
 def test_manifest_rejects_duplicate_ids(tmp_path):

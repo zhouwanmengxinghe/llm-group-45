@@ -108,7 +108,10 @@ python -m patchlab batch --manifest benchmarks/quixbugs-dev.json --model-config 
 ```
 
 Use `--mode single`, `--mode feedback`, or `--mode memory` one or more times to select conditions.
-The bundled manifest is a development subset, not a held-out benchmark score.
+The batch writes portable relative result paths, task-level `runs.csv`, and mode-level `summary.json`.
+Use `python -m patchlab batch-report --output runs/quixbugs-dev` to rebuild both reports after
+moving or collecting a batch directory. The bundled manifest is a development subset, not a
+held-out benchmark score.
 
 - `events.jsonl`: model decisions, inspection evidence, test output, and termination.
 - `result.json`: outcome, diagnosis on success, measured time, and available token usage.
