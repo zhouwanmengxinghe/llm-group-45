@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "dataset": "SWE-bench/SWE-bench_Verified",
+  "split": "test",
+  "dataset_revision": "78f471bf655a3137b2e8a75af1501690ec009ec3",
+  "task_repo_revision": "3d07b464b7b311a0cbfb5ed5b2d8a3b96f84a33d",
+  "instances": [
+    "sympy__sympy-20590",
+    "astropy__astropy-14309"
+  ]
+}

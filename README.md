@@ -93,6 +93,13 @@ The Docker runner expects a locally available Linux image that provides `python`
 
 ## Run artifacts and evaluation
 
+SWE-bench Verified preparation is documented in
+[the pilot guide](docs/swebench-pilot.md). The integration freezes upstream
+revisions, excludes gold and scoring artifacts from model context, exports the
+official prediction schema, and records an evaluation command without running
+it. SWE-bench patches remain `candidate_ready` until the independent upstream
+harness grades them; no live SWE-bench result is claimed yet.
+
 Before spending model tokens, validate the frozen five-task QuixBugs development manifest:
 
 ```powershell

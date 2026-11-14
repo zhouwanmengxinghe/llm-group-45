@@ -18,7 +18,7 @@ class Demonstrator:
         if not feedback:
             diagnosis = "Clamping prevents an empty interval from having negative duration."
             replacement = "    return 0"
-        elif feedback[-1].get("stage") == "regression":
+        elif feedback[-1].get("stage") in {"regression", "public_suite"}:
             diagnosis = "Regression evidence shows positive intervals must retain their duration."
             replacement = "    return max(0, end - start)"
         else:

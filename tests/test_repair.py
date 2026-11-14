@@ -40,6 +40,23 @@ def test_single_attempt_cannot_retry(tmp_path):
     assert any(r["event"] == "candidate_regression" and r["exit_code"] == 1 for r in trace)
 
 
+def test_external_evaluation_produces_unverified_candidate(tmp_path):
+    repo = tmp_path / "repo"
+    make_fixture(repo)
+    task = Task(
+        repo, "HEAD", "Reversed intervals should have zero duration.",
+        ["interval.py"], [], ["test_interval.py::test_positive"], "swebench",
+    )
+    result = execute(
+        task, tmp_path / "external-run", Demonstrator(), PytestRunner(None, 30),
+        mode="feedback",
+    )
+    assert result["status"] == "candidate_ready"
+    assert result["external_evaluation"] == "swebench"
+    assert "target_result" not in result
+    assert (tmp_path / "external-run" / "final.patch").is_file()
+
+
 def test_rejected_candidate_does_not_run(tmp_path):
     reviewed = []
 

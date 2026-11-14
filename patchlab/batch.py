@@ -32,6 +32,12 @@ def _strings(value: object, field: str) -> list[str]:
     return list(value)
 
 
+def _optional_strings(value: object, field: str) -> list[str]:
+    if not isinstance(value, list) or not all(isinstance(x, str) and x for x in value):
+        raise ValueError(f"{field} must be a list of strings")
+    return list(value)
+
+
 def load_manifest(path: Path) -> list[BatchTask]:
     """Load tasks, resolving repository paths relative to the manifest."""
     path = path.resolve()
@@ -48,6 +54,7 @@ def load_manifest(path: Path) -> list[BatchTask]:
         repository = row.get("repository")
         issue = row.get("issue")
         revision = row.get("revision", "HEAD")
+        evaluation = row.get("evaluation", "supplied_tests")
         if not isinstance(task_id, str) or not TASK_ID.fullmatch(task_id) or task_id in seen:
             raise ValueError(f"invalid or duplicate task id: {task_id}")
         if not isinstance(repository, str) or not repository:
@@ -57,9 +64,17 @@ def load_manifest(path: Path) -> list[BatchTask]:
         repo = (path.parent / repository).resolve()
         if not repo.is_dir():
             raise ValueError(f"task {task_id}: repository does not exist: {repo}")
+        if evaluation not in {"supplied_tests", "swebench"}:
+            raise ValueError(f"task {task_id}: unsupported evaluation policy")
+        target = _optional_strings(row.get("target"), "target")
+        if evaluation == "supplied_tests" and not target:
+            raise ValueError(f"task {task_id}: supplied-tests evaluation needs a target")
+        if evaluation == "swebench" and target:
+            raise ValueError(f"task {task_id}: SWE-bench scoring tests must remain withheld")
         tasks.append(BatchTask(task_id, Task(
             repo, revision, issue.strip(), _strings(row.get("editable"), "editable"),
-            _strings(row.get("target"), "target"), _strings(row.get("suite"), "suite"),
+            target, _strings(row.get("suite"), "suite"),
+            "swebench" if evaluation == "swebench" else None,
         )))
         seen.add(task_id)
     return tasks
@@ -82,10 +97,16 @@ def validate_tasks(tasks: list[BatchTask], runner: PytestRunner) -> list[dict]:
                         raise ValueError(f"invalid pytest selector: {selector}")
                 check = Path(temp) / "initial"
                 shutil.copytree(frozen, check)
-                initial = runner.run(check, item.task.target)
-                row["initial_target"] = initial
-                if initial["timed_out"] or initial["exit_code"] != 1:
-                    raise ValueError("target must reproduce the bug with pytest exit code 1")
+                if item.task.external_evaluation:
+                    initial = runner.run(check, item.task.suite)
+                    row["initial_public_suite"] = initial
+                    if initial["timed_out"] or initial["exit_code"] not in {0, 1}:
+                        raise ValueError("public suite must run with pytest exit code 0 or 1")
+                else:
+                    initial = runner.run(check, item.task.target)
+                    row["initial_target"] = initial
+                    if initial["timed_out"] or initial["exit_code"] != 1:
+                        raise ValueError("target must reproduce the bug with pytest exit code 1")
                 row["status"] = "valid"
         except Exception as exc:
             row["reason"] = f"{type(exc).__name__}: {exc}"
@@ -124,6 +145,7 @@ def run_batch(
     summary = {
         "tasks": len(tasks), "modes": modes, "repeats": repeats, "runs": runs,
         "verified": sum(row["status"] == "verified" for row in runs),
+        "candidate_ready": sum(row["status"] == "candidate_ready" for row in runs),
     }
     (output / "batch.json").write_text(
         json.dumps(summary, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
@@ -183,6 +205,7 @@ def report_batch(output: Path) -> dict:
         ]
         modes.append({
             "mode": mode, "runs": len(rows), "verified": len(verified),
+            "candidate_ready": sum(row["status"] == "candidate_ready" for row in rows),
             "verified_rate": len(verified) / len(rows),
             "recovered_after_failed_candidate": sum(
                 isinstance(row["attempts"], int) and row["attempts"] > 1 for row in verified

@@ -14,6 +14,9 @@ from .batch import load_manifest, report_batch, run_batch, validate_tasks
 from .demo import run_demo
 from .experiment import Task, execute
 from .workbench import PytestRunner
+from .swebench import (
+    export_predictions, freeze_selection, write_evaluation_plan, write_patchlab_manifest,
+)
 
 
 def approve(diagnosis: str, patch: str) -> bool:
@@ -103,6 +106,36 @@ def main() -> int:
     batch_executor.add_argument("--trusted-local", action="store_true")
     batch_report = commands.add_parser("batch-report", help="Rebuild CSV and summary files for a batch.")
     batch_report.add_argument("--output", required=True, type=Path)
+    swe_freeze = commands.add_parser(
+        "swebench-freeze", help="Create a generation-safe lock from a pinned SWE-bench task repo."
+    )
+    swe_freeze.add_argument("--task-repo", required=True, type=Path)
+    swe_freeze.add_argument("--selection", required=True, type=Path)
+    swe_freeze.add_argument("--output", required=True, type=Path)
+    swe_export = commands.add_parser(
+        "swebench-export", help="Export PatchLab final patches in SWE-bench prediction format."
+    )
+    swe_export.add_argument("--lock", required=True, type=Path)
+    swe_export.add_argument("--batch-output", required=True, type=Path)
+    swe_export.add_argument("--output", required=True, type=Path)
+    swe_export.add_argument("--mode", required=True, choices=["single", "feedback", "memory"])
+    swe_export.add_argument("--repeat", type=positive, default=1)
+    swe_export.add_argument("--model-name", required=True)
+    swe_manifest = commands.add_parser(
+        "swebench-manifest", help="Join a frozen lock with operator-selected public tests."
+    )
+    swe_manifest.add_argument("--lock", required=True, type=Path)
+    swe_manifest.add_argument("--workspaces", required=True, type=Path)
+    swe_manifest.add_argument("--output", required=True, type=Path)
+    swe_plan = commands.add_parser(
+        "swebench-eval-plan", help="Write an official evaluation command without executing it."
+    )
+    swe_plan.add_argument("--lock", required=True, type=Path)
+    swe_plan.add_argument("--predictions", required=True, type=Path)
+    swe_plan.add_argument("--task-repo", required=True, type=Path)
+    swe_plan.add_argument("--output", required=True, type=Path)
+    swe_plan.add_argument("--run-id", required=True)
+    swe_plan.add_argument("--workers", type=positive, default=1)
     args = parser.parse_args()
     try:
         if args.command == "web":
@@ -128,6 +161,28 @@ def main() -> int:
             return 0
         if args.command == "batch-report":
             print(json.dumps(report_batch(args.output), indent=2))
+            return 0
+        if args.command == "swebench-freeze":
+            result = freeze_selection(args.task_repo, args.selection, args.output)
+            print(json.dumps({"instances": len(result["instances"]), "output": str(args.output)}, indent=2))
+            return 0
+        if args.command == "swebench-export":
+            result = export_predictions(
+                args.lock, args.batch_output, args.output, mode=args.mode,
+                repeat=args.repeat, model_name=args.model_name,
+            )
+            print(json.dumps({"predictions": len(result), "output": str(args.output)}, indent=2))
+            return 0
+        if args.command == "swebench-manifest":
+            result = write_patchlab_manifest(args.lock, args.workspaces, args.output)
+            print(json.dumps({"tasks": len(result["tasks"]), "output": str(args.output)}, indent=2))
+            return 0
+        if args.command == "swebench-eval-plan":
+            result = write_evaluation_plan(
+                args.lock, args.predictions, args.task_repo, args.output,
+                run_id=args.run_id, workers=args.workers,
+            )
+            print(json.dumps(result, indent=2))
             return 0
         runner = PytestRunner(args.image, args.timeout)
         gate = approve if args.approve else None
