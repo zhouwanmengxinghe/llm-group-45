@@ -104,12 +104,13 @@ condition, and repeat receives an independent output directory; `batch.json` rec
 
 ```powershell
 python -m patchlab batch --manifest benchmarks/quixbugs-dev.json --model-config configs/my-model.toml `
-  --trusted-local --repeats 1 --output runs/quixbugs-dev
+  --trusted-local --repeats 1 --output ../patchlab-runs/quixbugs-dev
 ```
 
 Use `--mode single`, `--mode feedback`, or `--mode memory` one or more times to select conditions.
-The batch writes portable relative result paths, task-level `runs.csv`, and mode-level `summary.json`.
-Use `python -m patchlab batch-report --output runs/quixbugs-dev` to rebuild both reports after
+The output directory must be outside the target repository. The batch writes portable relative
+result paths, task-level `runs.csv`, and mode-level `summary.json`. Use
+`python -m patchlab batch-report --output ../patchlab-runs/quixbugs-dev` to rebuild both reports after
 moving or collecting a batch directory. The bundled manifest is a development subset, not a
 held-out benchmark score.
 

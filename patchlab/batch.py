@@ -103,6 +103,9 @@ def run_batch(
     if not 1 <= repeats <= 20:
         raise ValueError("repeats must be between 1 and 20")
     output = output.resolve()
+    for item in tasks:
+        if output.is_relative_to(item.task.repository.resolve()):
+            raise ValueError("batch output must be outside every target repository")
     output.mkdir(parents=True, exist_ok=False)
     runs = []
     for item in tasks:

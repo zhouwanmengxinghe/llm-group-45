@@ -61,3 +61,17 @@ def test_manifest_rejects_duplicate_ids(tmp_path):
     manifest.write_text(json.dumps({"tasks": [row, row]}), encoding="utf-8")
     with pytest.raises(ValueError, match="duplicate"):
         load_manifest(manifest)
+
+
+def test_batch_rejects_output_inside_target_repository(tmp_path):
+    repo = tmp_path / "repo"
+    make_fixture(repo)
+    manifest = tmp_path / "tasks.json"
+    write_manifest(manifest, repo)
+    output = repo / "runs" / "batch"
+    with pytest.raises(ValueError, match="outside every target repository"):
+        run_batch(
+            load_manifest(manifest), output, Demonstrator, PytestRunner(None, 30),
+            modes=["feedback"], repeats=1,
+        )
+    assert not output.exists()
