@@ -18,6 +18,24 @@ on an ARM64 Mac with the upstream AMD64 image under emulation. SymPy's public
 about 34 seconds: 103 passed, 1 skipped, and 1 expected failure. This validates
 the generation environment only; it is not a model result or official score.
 
+## First end-to-end result
+
+The first live run completed on 2026-11-14 with the `deepseek-flash` provider
+alias in `single` mode. The agent made eight model calls, including three valid
+inspection actions, reported 21,876 tokens, and submitted one candidate after
+about 76 seconds. Four intermediate model responses were invalid actions, but
+the controller continued within its fixed call budget.
+
+The candidate added an empty `__slots__` declaration to `Printable` in
+`sympy/core/_print_helpers.py`. All 103 selected public regression tests passed
+after the edit. The pinned upstream SWE-bench harness then applied the patch in
+a clean instance container and reported the task as **resolved**: the one
+FAIL_TO_PASS test and all 21 PASS_TO_PASS tests succeeded. There were no patch
+application, infrastructure, container-cleanup, or grading errors.
+
+This is one pilot task and therefore demonstrates integration, not a benchmark
+success rate or evidence that the iterative conditions outperform `single`.
+
 ## Frozen pilot
 
 The pilot selection is stored in
