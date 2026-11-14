@@ -93,6 +93,23 @@ The Docker runner expects a locally available Linux image that provides `python`
 
 ## Run artifacts and evaluation
 
+Before spending model tokens, validate the frozen five-task QuixBugs development manifest:
+
+```powershell
+python -m patchlab validate-manifest --manifest benchmarks/quixbugs-dev.json --trusted-local
+```
+
+After configuring a model, run every task under the three experiment conditions. Each task,
+condition, and repeat receives an independent output directory; `batch.json` records the run index.
+
+```powershell
+python -m patchlab batch --manifest benchmarks/quixbugs-dev.json --model-config configs/my-model.toml `
+  --trusted-local --repeats 1 --output runs/quixbugs-dev
+```
+
+Use `--mode single`, `--mode feedback`, or `--mode memory` one or more times to select conditions.
+The bundled manifest is a development subset, not a held-out benchmark score.
+
 - `events.jsonl`: model decisions, inspection evidence, test output, and termination.
 - `result.json`: outcome, diagnosis on success, measured time, and available token usage.
 - `candidate-N.patch`: reviewable proposals, including ones that did not pass verification.
