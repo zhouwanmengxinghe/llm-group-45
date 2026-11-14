@@ -93,6 +93,11 @@ The Docker runner expects a locally available Linux image that provides `python`
 
 ## Run artifacts and evaluation
 
+The first live-model QuixBugs checks and their limitations are documented in
+[the development results note](docs/quixbugs-development-results.md). The note
+is deliberately separated from final benchmark claims: it records smoke and
+development runs, including a repeated semantic failure on `lcs_length`.
+
 Before spending model tokens, validate the frozen five-task QuixBugs development manifest:
 
 ```powershell
