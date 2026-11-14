@@ -1,0 +1,96 @@
+{
+  "name": "QuixBugs Python expanded development subset",
+  "source_revision": "4257f44b0ff1181dedaedee6a447e133219fcebf",
+  "tasks": [
+    {
+      "id": "quixbugs-bucketsort",
+      "repository": "..",
+      "revision": "2b78c361b46a1116b2f37095b586d550df2d2564",
+      "issue": "bucketsort should return all input values in ascending order while preserving duplicates; several inputs currently produce incorrect output.",
+      "editable": ["examples/quixbugs/bucketsort/python_programs/bucketsort.py"],
+      "target": ["examples/quixbugs/bucketsort/python_testcases/test_bucketsort.py::test_bucketsort[input_data1-expected1]"],
+      "suite": ["examples/quixbugs/bucketsort/python_testcases/test_bucketsort.py"]
+    },
+    {
+      "id": "quixbugs-gcd",
+      "repository": "..",
+      "revision": "2b78c361b46a1116b2f37095b586d550df2d2564",
+      "issue": "gcd should return the greatest common divisor of two integers; non-trivial inputs currently produce incorrect results or fail recursively.",
+      "editable": ["examples/quixbugs/gcd/python_programs/gcd.py"],
+      "target": ["examples/quixbugs/gcd/python_testcases/test_gcd.py::test_gcd[input_data1-13]"],
+      "suite": ["examples/quixbugs/gcd/python_testcases/test_gcd.py"]
+    },
+    {
+      "id": "quixbugs-knapsack",
+      "repository": "..",
+      "revision": "2b78c361b46a1116b2f37095b586d550df2d2564",
+      "issue": "knapsack should return the maximum total value obtainable without exceeding the capacity; some item combinations currently produce incorrect values.",
+      "editable": ["examples/quixbugs/knapsack/python_programs/knapsack.py"],
+      "target": ["examples/quixbugs/knapsack/python_testcases/test_knapsack.py::test_knapsack[input_data1-30]"],
+      "suite": ["examples/quixbugs/knapsack/python_testcases/test_knapsack.py"]
+    },
+    {
+      "id": "quixbugs-lcs-length",
+      "repository": "..",
+      "revision": "2b78c361b46a1116b2f37095b586d550df2d2564",
+      "issue": "lcs_length should return the length of the longest common subsequence of two sequences; many inputs currently return an incorrect length.",
+      "editable": ["examples/quixbugs/lcs_length/python_programs/lcs_length.py"],
+      "target": ["examples/quixbugs/lcs_length/python_testcases/test_lcs_length.py::test_lcs_length[input_data0-2]"],
+      "suite": ["examples/quixbugs/lcs_length/python_testcases/test_lcs_length.py"]
+    },
+    {
+      "id": "quixbugs-levenshtein",
+      "repository": "..",
+      "revision": "2b78c361b46a1116b2f37095b586d550df2d2564",
+      "issue": "levenshtein should return the minimum edit distance between two strings; some pairs currently produce an incorrect distance.",
+      "editable": ["examples/quixbugs/levenshtein/python_programs/levenshtein.py"],
+      "target": ["examples/quixbugs/levenshtein/python_testcases/test_levenshtein.py::test_levenshtein[input_data0-3]"],
+      "suite": ["examples/quixbugs/levenshtein/python_testcases/test_levenshtein.py"]
+    },
+    {
+      "id": "quixbugs-longest-common-subsequence",
+      "repository": "..",
+      "revision": "2b78c361b46a1116b2f37095b586d550df2d2564",
+      "issue": "longest_common_subsequence should return a longest common subsequence of the two input strings; some inputs currently return an invalid or non-maximal sequence.",
+      "editable": ["examples/quixbugs/longest_common_subsequence/python_programs/longest_common_subsequence.py"],
+      "target": ["examples/quixbugs/longest_common_subsequence/python_testcases/test_longest_common_subsequence.py::test_longest_common_subsequence[input_data3-tsitest]"],
+      "suite": ["examples/quixbugs/longest_common_subsequence/python_testcases/test_longest_common_subsequence.py"]
+    },
+    {
+      "id": "quixbugs-mergesort",
+      "repository": "..",
+      "revision": "2b78c361b46a1116b2f37095b586d550df2d2564",
+      "issue": "mergesort should return all input values in ascending order while preserving duplicates; most non-empty inputs currently produce incorrect output.",
+      "editable": ["examples/quixbugs/mergesort/python_programs/mergesort.py"],
+      "target": ["examples/quixbugs/mergesort/python_testcases/test_mergesort.py::test_mergesort[input_data1-expected1]"],
+      "suite": ["examples/quixbugs/mergesort/python_testcases/test_mergesort.py"]
+    },
+    {
+      "id": "quixbugs-next-permutation",
+      "repository": "..",
+      "revision": "2b78c361b46a1116b2f37095b586d550df2d2564",
+      "issue": "next_permutation should return the lexicographically next permutation of the input sequence; the current implementation returns incorrect results.",
+      "editable": ["examples/quixbugs/next_permutation/python_programs/next_permutation.py"],
+      "target": ["examples/quixbugs/next_permutation/python_testcases/test_next_permutation.py::test_next_permutation[input_data0-expected0]"],
+      "suite": ["examples/quixbugs/next_permutation/python_testcases/test_next_permutation.py"]
+    },
+    {
+      "id": "quixbugs-possible-change",
+      "repository": "..",
+      "revision": "2b78c361b46a1116b2f37095b586d550df2d2564",
+      "issue": "possible_change should count the ways to form a target amount from the supplied coin values; most inputs currently produce an incorrect count.",
+      "editable": ["examples/quixbugs/possible_change/python_programs/possible_change.py"],
+      "target": ["examples/quixbugs/possible_change/python_testcases/test_possible_change.py::test_possible_change[input_data1-4]"],
+      "suite": ["examples/quixbugs/possible_change/python_testcases/test_possible_change.py"]
+    },
+    {
+      "id": "quixbugs-shunting-yard",
+      "repository": "..",
+      "revision": "2b78c361b46a1116b2f37095b586d550df2d2564",
+      "issue": "shunting_yard should convert infix expressions to postfix form while respecting operator precedence; some expressions currently convert incorrectly.",
+      "editable": ["examples/quixbugs/shunting_yard/python_programs/shunting_yard.py"],
+      "target": ["examples/quixbugs/shunting_yard/python_testcases/test_shunting_yard.py::test_shunting_yard[input_data2-expected2]"],
+      "suite": ["examples/quixbugs/shunting_yard/python_testcases/test_shunting_yard.py"]
+    }
+  ]
+}

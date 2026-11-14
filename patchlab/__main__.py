@@ -10,6 +10,7 @@ from statistics import median
 import sys
 
 from .decision import ChatDecider
+from .batch import load_manifest, report_batch, run_batch, validate_tasks
 from .demo import run_demo
 from .experiment import Task, execute
 from .workbench import PytestRunner
@@ -81,6 +82,27 @@ def main() -> int:
     run.add_argument("--model-config", type=Path, help="TOML model configuration file")
     summary = commands.add_parser("summarize", help="Group result.json files by model and condition.")
     summary.add_argument("results", nargs="+", type=Path)
+    validate = commands.add_parser("validate-manifest", help="Validate benchmark tasks without a model call.")
+    validate.add_argument("--manifest", required=True, type=Path)
+    validate.add_argument("--timeout", type=positive, default=90)
+    validate_executor = validate.add_mutually_exclusive_group(required=True)
+    validate_executor.add_argument("--image")
+    validate_executor.add_argument("--trusted-local", action="store_true")
+    batch = commands.add_parser("batch", help="Run a frozen manifest across repair conditions.")
+    batch.add_argument("--manifest", required=True, type=Path)
+    batch.add_argument("--output", required=True, type=Path)
+    batch.add_argument("--mode", action="append", choices=["single", "feedback", "memory"])
+    batch.add_argument("--repeats", type=positive, default=1)
+    batch.add_argument("--timeout", type=positive, default=90)
+    batch.add_argument("--calls", type=positive, default=16)
+    batch.add_argument("--attempts", choices=range(1, 6), type=int, default=5)
+    batch.add_argument("--completion-tokens", type=positive, default=1200)
+    batch.add_argument("--model-config", type=Path)
+    batch_executor = batch.add_mutually_exclusive_group(required=True)
+    batch_executor.add_argument("--image")
+    batch_executor.add_argument("--trusted-local", action="store_true")
+    batch_report = commands.add_parser("batch-report", help="Rebuild CSV and summary files for a batch.")
+    batch_report.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     try:
         if args.command == "web":
@@ -89,6 +111,23 @@ def main() -> int:
             return 0
         if args.command == "summarize":
             print(json.dumps(summarize(args.results), indent=2))
+            return 0
+        if args.command == "validate-manifest":
+            rows = validate_tasks(load_manifest(args.manifest), PytestRunner(args.image, args.timeout))
+            print(json.dumps(rows, indent=2))
+            return 0 if all(row["status"] == "valid" for row in rows) else 1
+        if args.command == "batch":
+            modes = args.mode or ["single", "feedback", "memory"]
+            factory = lambda: ChatDecider(args.completion_tokens, args.model_config)
+            result = run_batch(
+                load_manifest(args.manifest), args.output, factory,
+                PytestRunner(args.image, args.timeout), modes=modes, repeats=args.repeats,
+                calls=args.calls, attempts=args.attempts,
+            )
+            print(json.dumps(result, indent=2))
+            return 0
+        if args.command == "batch-report":
+            print(json.dumps(report_batch(args.output), indent=2))
             return 0
         runner = PytestRunner(args.image, args.timeout)
         gate = approve if args.approve else None

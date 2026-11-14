@@ -1,6 +1,6 @@
 # QuixBugs Python 小规模测试集
 
-这里是从 [QuixBugs 官方仓库](https://github.com/jkoppel/QuixBugs) 选取的 5 个 Python 缺陷案例，供 PatchLab 本地开发和功能测试使用。每个文件夹互不依赖，包含原始缺陷程序、上游 pytest 测试、对应的 JSON 测试数据及 MIT 许可证；没有包含官方参考修复。
+这里是从 [QuixBugs 官方仓库](https://github.com/jkoppel/QuixBugs) 选取的 15 个 Python 缺陷案例，供 PatchLab 本地开发和功能测试使用。每个文件夹互不依赖，包含原始缺陷程序、上游 pytest 测试、对应的 JSON 测试数据及 MIT 许可证；没有包含官方参考修复。
 
 来源版本：`4257f44b0ff1181dedaedee6a447e133219fcebf`。复制时仅统一了文本换行符，以便 PatchLab 生成补丁。
 
@@ -20,6 +20,16 @@
 | `quicksort` | `quicksort` 应返回升序排列后的列表，并保留原有元素的数量；现在某些输入的排序结果不正确。请复现并修复。 | 1 失败，12 通过 |
 | `to_base` | `to_base` 应把正整数转换为指定进制的字符串；现在一些转换结果不正确。请复现并修复。 | 7 失败，3 通过 |
 | `max_sublist_sum` | `max_sublist_sum` 应返回连续子列表的最大和，允许空子列表；现在某些包含负数的输入结果有误。请复现并修复。 | 4 失败，2 通过 |
+| `bucketsort` | `bucketsort` 应返回输入列表的升序排列并保留全部元素；现在多种输入的排序结果不正确。请复现并修复。 | 6 失败，1 通过 |
+| `gcd` | `gcd` 应返回两个整数的最大公约数；现在多数非平凡输入会得到错误结果或递归失败。请复现并修复。 | 5 失败，1 通过 |
+| `knapsack` | `knapsack` 应在容量约束下返回可选物品的最大总价值；现在部分组合的结果不正确。请复现并修复。 | 6 失败，3 通过，1 跳过 |
+| `lcs_length` | `lcs_length` 应返回两个序列的最长公共子序列长度；现在多数输入的长度计算错误。请复现并修复。 | 8 失败，1 通过 |
+| `levenshtein` | `levenshtein` 应返回两个字符串之间的最小编辑距离；现在部分输入的距离不正确。请复现并修复。 | 5 失败，1 通过，1 跳过 |
+| `longest_common_subsequence` | `longest_common_subsequence` 应返回两个字符串的一个最长公共子序列；现在部分输入返回错误序列。请复现并修复。 | 4 失败，6 通过 |
+| `mergesort` | `mergesort` 应返回输入列表的升序排列并保留全部元素；现在多数非空输入结果不正确。请复现并修复。 | 13 失败，1 通过 |
+| `next_permutation` | `next_permutation` 应返回按字典序排列的下一个排列；现在测试输入均得到错误结果。请复现并修复。 | 8 失败 |
+| `possible_change` | `possible_change` 应计算使用给定硬币组成目标金额的方法数；现在多数输入计数错误。请复现并修复。 | 9 失败，1 通过 |
+| `shunting_yard` | `shunting_yard` 应把中缀表达式正确转换为后缀表示并遵守运算符优先级；现在部分表达式转换错误。请复现并修复。 | 4 失败，2 通过 |
 
 初始结果在此电脑使用 Python 3.14、pytest 9.1.1 检查；不同环境可能有差异。失败表示案例中的原始缺陷被测试发现，不代表 PatchLab 已经成功修复。
 

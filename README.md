@@ -112,6 +112,32 @@ python -m pytest tests/test_docker_integration.py
 
 ## Run artifacts and evaluation
 
+The first live-model QuixBugs checks and their limitations are documented in
+[the development results note](docs/quixbugs-development-results.md). The note
+is deliberately separated from final benchmark claims: it records smoke and
+development runs, including a repeated semantic failure on `lcs_length`.
+
+Before spending model tokens, validate the frozen five-task QuixBugs development manifest:
+
+```powershell
+python -m patchlab validate-manifest --manifest benchmarks/quixbugs-dev.json --trusted-local
+```
+
+After configuring a model, run every task under the three experiment conditions. Each task,
+condition, and repeat receives an independent output directory; `batch.json` records the run index.
+
+```powershell
+python -m patchlab batch --manifest benchmarks/quixbugs-dev.json --model-config configs/my-model.toml `
+  --trusted-local --repeats 1 --output ../patchlab-runs/quixbugs-dev
+```
+
+Use `--mode single`, `--mode feedback`, or `--mode memory` one or more times to select conditions.
+The output directory must be outside the target repository. The batch writes portable relative
+result paths, task-level `runs.csv`, and mode-level `summary.json`. Use
+`python -m patchlab batch-report --output ../patchlab-runs/quixbugs-dev` to rebuild both reports after
+moving or collecting a batch directory. The bundled manifest is a development subset, not a
+held-out benchmark score.
+
 - `events.jsonl`: model decisions, inspection evidence, test output, and termination.
 - `result.json`: outcome, diagnosis on success, measured time, and available token usage.
 - `candidate-N.patch`: reviewable proposals, including ones that did not pass verification.
