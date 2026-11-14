@@ -6,6 +6,7 @@ import argparse
 from collections import defaultdict
 import json
 from pathlib import Path
+import shlex
 from statistics import median
 import sys
 
@@ -14,6 +15,9 @@ from .batch import load_manifest, report_batch, run_batch, validate_tasks
 from .demo import run_demo
 from .experiment import Task, execute
 from .workbench import PytestRunner
+from .swebench import (
+    export_predictions, freeze_selection, write_evaluation_plan, write_patchlab_manifest,
+)
 
 
 def approve(diagnosis: str, patch: str) -> bool:
@@ -53,6 +57,16 @@ def positive(value: str) -> int:
     return n
 
 
+def test_program(value: str) -> list[str]:
+    try:
+        tokens = shlex.split(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+    if not tokens:
+        raise argparse.ArgumentTypeError("test program cannot be empty")
+    return tokens
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m patchlab")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -70,6 +84,14 @@ def main() -> int:
         executor = item.add_mutually_exclusive_group(required=True)
         executor.add_argument("--image", help="Existing Linux Docker image with Python and test dependencies.")
         executor.add_argument("--trusted-local", action="store_true", help="Execute trusted code on the host.")
+        item.add_argument(
+            "--container-python", default="python",
+            help="Python executable inside the selected Docker image.",
+        )
+        item.add_argument(
+            "--test-program", type=test_program,
+            help="Project test program executed by Python instead of pytest, as one quoted string.",
+        )
     run.add_argument("--repo", type=Path, required=True)
     run.add_argument("--revision", default="HEAD")
     run.add_argument("--issue", required=True)
@@ -88,6 +110,8 @@ def main() -> int:
     validate_executor = validate.add_mutually_exclusive_group(required=True)
     validate_executor.add_argument("--image")
     validate_executor.add_argument("--trusted-local", action="store_true")
+    validate.add_argument("--container-python", default="python")
+    validate.add_argument("--test-program", type=test_program)
     batch = commands.add_parser("batch", help="Run a frozen manifest across repair conditions.")
     batch.add_argument("--manifest", required=True, type=Path)
     batch.add_argument("--output", required=True, type=Path)
@@ -101,8 +125,40 @@ def main() -> int:
     batch_executor = batch.add_mutually_exclusive_group(required=True)
     batch_executor.add_argument("--image")
     batch_executor.add_argument("--trusted-local", action="store_true")
+    batch.add_argument("--container-python", default="python")
+    batch.add_argument("--test-program", type=test_program)
     batch_report = commands.add_parser("batch-report", help="Rebuild CSV and summary files for a batch.")
     batch_report.add_argument("--output", required=True, type=Path)
+    swe_freeze = commands.add_parser(
+        "swebench-freeze", help="Create a generation-safe lock from a pinned SWE-bench task repo."
+    )
+    swe_freeze.add_argument("--task-repo", required=True, type=Path)
+    swe_freeze.add_argument("--selection", required=True, type=Path)
+    swe_freeze.add_argument("--output", required=True, type=Path)
+    swe_export = commands.add_parser(
+        "swebench-export", help="Export PatchLab final patches in SWE-bench prediction format."
+    )
+    swe_export.add_argument("--lock", required=True, type=Path)
+    swe_export.add_argument("--batch-output", required=True, type=Path)
+    swe_export.add_argument("--output", required=True, type=Path)
+    swe_export.add_argument("--mode", required=True, choices=["single", "feedback", "memory"])
+    swe_export.add_argument("--repeat", type=positive, default=1)
+    swe_export.add_argument("--model-name", required=True)
+    swe_manifest = commands.add_parser(
+        "swebench-manifest", help="Join a frozen lock with operator-selected public tests."
+    )
+    swe_manifest.add_argument("--lock", required=True, type=Path)
+    swe_manifest.add_argument("--workspaces", required=True, type=Path)
+    swe_manifest.add_argument("--output", required=True, type=Path)
+    swe_plan = commands.add_parser(
+        "swebench-eval-plan", help="Write an official evaluation command without executing it."
+    )
+    swe_plan.add_argument("--lock", required=True, type=Path)
+    swe_plan.add_argument("--predictions", required=True, type=Path)
+    swe_plan.add_argument("--task-repo", required=True, type=Path)
+    swe_plan.add_argument("--output", required=True, type=Path)
+    swe_plan.add_argument("--run-id", required=True)
+    swe_plan.add_argument("--workers", type=positive, default=1)
     args = parser.parse_args()
     try:
         if args.command == "web":
@@ -113,7 +169,12 @@ def main() -> int:
             print(json.dumps(summarize(args.results), indent=2))
             return 0
         if args.command == "validate-manifest":
-            rows = validate_tasks(load_manifest(args.manifest), PytestRunner(args.image, args.timeout))
+            rows = validate_tasks(
+                load_manifest(args.manifest),
+                PytestRunner(
+                    args.image, args.timeout, args.container_python, args.test_program,
+                ),
+            )
             print(json.dumps(rows, indent=2))
             return 0 if all(row["status"] == "valid" for row in rows) else 1
         if args.command == "batch":
@@ -121,7 +182,10 @@ def main() -> int:
             factory = lambda: ChatDecider(args.completion_tokens, args.model_config)
             result = run_batch(
                 load_manifest(args.manifest), args.output, factory,
-                PytestRunner(args.image, args.timeout), modes=modes, repeats=args.repeats,
+                PytestRunner(
+                    args.image, args.timeout, args.container_python, args.test_program,
+                ),
+                modes=modes, repeats=args.repeats,
                 calls=args.calls, attempts=args.attempts,
             )
             print(json.dumps(result, indent=2))
@@ -129,7 +193,31 @@ def main() -> int:
         if args.command == "batch-report":
             print(json.dumps(report_batch(args.output), indent=2))
             return 0
-        runner = PytestRunner(args.image, args.timeout)
+        if args.command == "swebench-freeze":
+            result = freeze_selection(args.task_repo, args.selection, args.output)
+            print(json.dumps({"instances": len(result["instances"]), "output": str(args.output)}, indent=2))
+            return 0
+        if args.command == "swebench-export":
+            result = export_predictions(
+                args.lock, args.batch_output, args.output, mode=args.mode,
+                repeat=args.repeat, model_name=args.model_name,
+            )
+            print(json.dumps({"predictions": len(result), "output": str(args.output)}, indent=2))
+            return 0
+        if args.command == "swebench-manifest":
+            result = write_patchlab_manifest(args.lock, args.workspaces, args.output)
+            print(json.dumps({"tasks": len(result["tasks"]), "output": str(args.output)}, indent=2))
+            return 0
+        if args.command == "swebench-eval-plan":
+            result = write_evaluation_plan(
+                args.lock, args.predictions, args.task_repo, args.output,
+                run_id=args.run_id, workers=args.workers,
+            )
+            print(json.dumps(result, indent=2))
+            return 0
+        runner = PytestRunner(
+            args.image, args.timeout, args.container_python, args.test_program,
+        )
         gate = approve if args.approve else None
         if args.command == "demo":
             result = run_demo(args.output, args.mode, runner, gate)

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "dataset": "SWE-bench/SWE-bench_Verified",
+  "split": "test",
+  "dataset_revision": "78f471bf655a3137b2e8a75af1501690ec009ec3",
+  "task_repo_revision": "3d07b464b7b311a0cbfb5ed5b2d8a3b96f84a33d",
+  "instances": [
+    {
+      "instance_id": "sympy__sympy-20590",
+      "repo": "sympy/sympy",
+      "base_commit": "cffd4e0f86fefd4802349a9f9b19ed70934ea354",
+      "version": "1.7",
+      "difficulty": "15 min - 1 hour",
+      "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-20590:latest",
+      "problem_statement": "Symbol instances have __dict__ since 1.7?\nIn version 1.6.2 Symbol instances had no `__dict__` attribute\n```python\n>>> sympy.Symbol('s').__dict__\n---------------------------------------------------------------------------\nAttributeError                            Traceback (most recent call last)\n<ipython-input-3-e2060d5eec73> in <module>\n----> 1 sympy.Symbol('s').__dict__\n\nAttributeError: 'Symbol' object has no attribute '__dict__'\n>>> sympy.Symbol('s').__slots__\n('name',)\n```\n\nThis changes in 1.7 where `sympy.Symbol('s').__dict__` now exists (and returns an empty dict)\nI may misinterpret this, but given the purpose of `__slots__`, I assume this is a bug, introduced because some parent class accidentally stopped defining `__slots__`.",
+      "metadata_sha256": "061781d79ad364b1a499155b377a4ae1d354a40c56fb0e549f664caf6cd06665",
+      "problem_statement_sha256": "e2f8e16a69eabf97334f7852f8675d8d470ef7a3e990ab484c6427bd7ad9ff52"
+    }
+  ],
+  "generation_excludes": [
+    "eval.sh",
+    "gold.patch",
+    "hints.md",
+    "test.patch",
+    "tests.json"
+  ]
+}

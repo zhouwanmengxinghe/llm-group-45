@@ -117,6 +117,14 @@ The first live-model QuixBugs checks and their limitations are documented in
 is deliberately separated from final benchmark claims: it records smoke and
 development runs, including a repeated semantic failure on `lcs_length`.
 
+SWE-bench Verified preparation is documented in
+[the pilot guide](docs/swebench-pilot.md). The integration freezes upstream
+revisions, excludes gold and scoring artifacts from model context, exports the
+official prediction schema, and records an evaluation command without running
+it. SWE-bench patches remain `candidate_ready` until the independent upstream
+harness grades them. The guide reports one independently resolved pilot task;
+this is an integration check, not a benchmark success rate.
+
 Before spending model tokens, validate the frozen five-task QuixBugs development manifest:
 
 ```powershell
@@ -143,10 +151,10 @@ held-out benchmark score.
 - `candidate-N.patch`: reviewable proposals, including ones that did not pass verification.
 - `final.patch`: generated only after the supplied targeted and regression tests both pass.
 
-Local success means the supplied tests passed. Five QuixBugs development examples are included, but SWE-bench provisioning and independent held-out grading are not implemented. Docker and the latest live-provider workflow still need deployment verification. The comparison command groups recorded runs by model and condition; keep task sets and configuration matched when using it for an experiment.
+Local success means the supplied tests passed. Fifteen QuixBugs development examples, batch tools, and a SWE-bench pilot bridge are included. The final held-out evaluation and multi-repository benchmark remain to be completed. The comparison command groups recorded runs by model and condition; keep task sets and configuration matched when using it for an experiment.
 
 ## 小组分工与后续接口
 
 - Agent 核心：`patchlab/decision.py` 处理模型请求与动作；`patchlab/experiment.py` 管理观察、决策、失败反馈和三种模式。
 - 工具与执行：`patchlab/workbench.py` 是目前的基础版本，供负责工具的组员继续完善，包括 Docker 实机验证、更多仓库类型和测试执行方式。控制器使用 `inspect`、`prepare`、`stage` 和测试运行器的 `run` 返回结果。
-- 数据集与评测：当前已有 5 个 QuixBugs 开发案例和简单结果汇总。更完整的基准接入、任务冻结、独立验收、批量实验与报告留待负责评测的组员完成。
+- 数据集与评测：当前已有 15 个 QuixBugs 开发案例、批量工具与 SWE-bench 试点桥接。完整任务冻结、正式独立验收、批量实验与报告仍需完成。

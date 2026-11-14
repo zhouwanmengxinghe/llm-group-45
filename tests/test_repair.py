@@ -40,6 +40,23 @@ def test_single_attempt_cannot_retry(tmp_path):
     assert any(r["event"] == "candidate_regression" and r["exit_code"] == 1 for r in trace)
 
 
+def test_external_evaluation_produces_unverified_candidate(tmp_path):
+    repo = tmp_path / "repo"
+    make_fixture(repo)
+    task = Task(
+        repo, "HEAD", "Reversed intervals should have zero duration.",
+        ["interval.py"], [], ["test_interval.py::test_positive"], "swebench",
+    )
+    result = execute(
+        task, tmp_path / "external-run", Demonstrator(), PytestRunner(None, 30),
+        mode="feedback",
+    )
+    assert result["status"] == "candidate_ready"
+    assert result["external_evaluation"] == "swebench"
+    assert "target_result" not in result
+    assert (tmp_path / "external-run" / "final.patch").is_file()
+
+
 def test_rejected_candidate_does_not_run(tmp_path):
     reviewed = []
 
@@ -63,3 +80,20 @@ def test_test_files_and_outside_paths_cannot_be_edited(tmp_path):
     for path in ("test_code.py", "../code.py", str(Path(tmp_path) / "code.py")):
         with pytest.raises(ValueError):
             bench.prepare([{"path": path, "before": "1", "after": "2"}])
+
+
+def test_container_python_is_bounded():
+    runner = PytestRunner("image:local", 30, "/opt/conda/envs/testbed/bin/python")
+    assert runner.python_executable.endswith("/python")
+    with pytest.raises(ValueError, match="safe absolute path"):
+        PytestRunner("image:local", 30, "python -c")
+    with pytest.raises(ValueError, match="only valid"):
+        PytestRunner(None, 30, "/usr/bin/python")
+    runner = PytestRunner(
+        "image:local", 30, "/opt/conda/envs/testbed/bin/python",
+        ["bin/test", "-C", "--no-colors"], ["-k", "test_public"],
+    )
+    assert runner.test_program == ["bin/test", "-C", "--no-colors"]
+    assert runner.test_suffix == ["-k", "test_public"]
+    with pytest.raises(ValueError, match="without shell syntax"):
+        PytestRunner("image:local", 30, test_program=["bin/test", ";", "id"])

@@ -40,11 +40,15 @@ all five candidate attempts without passing the target test. The original
 program returned `1` for the supplied `witch`/`sandwich` case, while all five
 candidate patches returned `4` instead of the expected `2`.
 
-This was not an API quota or execution failure. The repeated value suggests
-that the model converged on the conventional longest-common-subsequence
-interpretation and did not infer the benchmark function's intended semantics
-from the available evidence. The trajectory is useful as a failure-analysis
-case: additional attempts alone did not diversify the hypothesis.
+This was not an API quota or execution failure. The original development
+manifest describes the task as longest common **subsequence**, while the
+upstream program specification and test expect longest common **substring**.
+The provided issue is therefore inconsistent with the evaluation oracle, and
+the repeated value is consistent with the model following that misleading
+instruction. The result cannot be attributed solely to a failure to infer the
+correct semantics or a lack of hypothesis diversity. Preserve the original
+manifest and run logs for reproducibility; create and label a new corrected
+manifest before rerunning the task, rather than comparing it as the same input.
 
 ## Conclusions and next steps
 

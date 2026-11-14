@@ -1,0 +1,14 @@
+{
+  "instances": [
+    {
+      "instance_id": "sympy__sympy-20590",
+      "repository": "/absolute/path/to/sympy-checkout",
+      "editable": [
+        "REPLACE_WITH_OPERATOR_SELECTED_PYTHON_SOURCE.py"
+      ],
+      "suite": [
+        "REPLACE_WITH_PUBLIC_REGRESSION_TEST.py"
+      ]
+    }
+  ]
+}

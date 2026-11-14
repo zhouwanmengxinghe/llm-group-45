@@ -30,6 +30,7 @@ class Task:
     editable: list[str]
     target: list[str]
     suite: list[str]
+    external_evaluation: str | None = None
 
 
 def execute(
@@ -52,6 +53,10 @@ def execute(
         "completion_limit": getattr(model, "completion_limit", None),
         "test_timeout": runner.timeout, "approval_enabled": approve is not None,
         "target": task.target, "suite": task.suite, "container_image": runner.image,
+        "container_python": runner.python_executable,
+        "test_program": runner.test_program,
+        "test_suffix": runner.test_suffix,
+        "external_evaluation": task.external_evaluation,
     }
     with (output / "events.jsonl").open("w", encoding="utf-8") as events:
         def record(event: str, **details):
@@ -77,12 +82,22 @@ def execute(
                         raise ValueError(f"Invalid pytest selector: {selector}")
                 check = area / "initial"
                 shutil.copytree(frozen, check)
-                initial = runner.run(check, task.target)
-                record("initial_target", **initial)
-                result["initial_target"] = initial
-                if initial["timed_out"] or initial["exit_code"] != 1:
-                    result["status"] = "bug_not_reproduced" if initial["exit_code"] == 0 else "initial_test_error"
-                    return result
+                if task.external_evaluation:
+                    if task.target:
+                        raise ValueError("externally evaluated tasks must not expose scoring tests as targets")
+                    initial = runner.run(check, task.suite)
+                    record("initial_public_suite", **initial)
+                    result["initial_public_suite"] = initial
+                    if initial["timed_out"] or initial["exit_code"] != 0:
+                        result["status"] = "initial_test_error"
+                        return result
+                else:
+                    initial = runner.run(check, task.target)
+                    record("initial_target", **initial)
+                    result["initial_target"] = initial
+                    if initial["timed_out"] or initial["exit_code"] != 1:
+                        result["status"] = "bug_not_reproduced" if initial["exit_code"] == 0 else "initial_test_error"
+                        return result
 
                 observations: list[dict] = []
                 history: list[dict] = []
@@ -96,6 +111,12 @@ def execute(
                         "issue": task.issue[:8000], "editable": task.editable,
                         "session_context": session_context,
                         "initial_failure": initial["output"][-4500:],
+                        "verification_policy": (
+                            "Official SWE-bench tests are withheld. Produce a candidate that preserves the "
+                            "public regression suite; external evaluation will determine resolution."
+                            if task.external_evaluation else
+                            "The supplied reproducer and regression suite determine local verification."
+                        ),
                         "recent_inspection": list(observations),
                         "evidence_summary": evidence_summary,
                         "repair_feedback": history[-5:] if mode == "memory" else history[-1:],
@@ -148,20 +169,32 @@ def execute(
                         else:
                             bench.stage(candidate, changes)
                             result["verified_candidates"] += 1
-                            focused = runner.run(candidate, task.target)
-                            record("candidate_target", attempt=number, **focused)
-                            regression = None
-                            if not focused["timed_out"] and focused["exit_code"] == 0:
+                            if task.external_evaluation:
+                                focused = None
                                 regression = runner.run(candidate, task.suite)
-                                record("candidate_regression", attempt=number, **regression)
+                                record("candidate_public_suite", attempt=number, **regression)
+                            else:
+                                focused = runner.run(candidate, task.target)
+                                record("candidate_target", attempt=number, **focused)
+                                regression = None
+                                if not focused["timed_out"] and focused["exit_code"] == 0:
+                                    regression = runner.run(candidate, task.suite)
+                                    record("candidate_regression", attempt=number, **regression)
                             if regression and not regression["timed_out"] and regression["exit_code"] == 0:
                                 (output / "final.patch").write_bytes(patch.encode())
-                                result.update(status="verified", diagnosis=diagnosis,
-                                              target_result=focused, regression_result=regression)
+                                if task.external_evaluation:
+                                    result.update(
+                                        status="candidate_ready", diagnosis=diagnosis,
+                                        public_suite_result=regression,
+                                    )
+                                else:
+                                    result.update(status="verified", diagnosis=diagnosis,
+                                                  target_result=focused, regression_result=regression)
                                 return result
                             failed = regression or focused
                             feedback.update(
-                                stage="regression" if regression else "target",
+                                stage=("public_suite" if task.external_evaluation else
+                                       "regression" if regression else "target"),
                                 failure="timeout" if failed["timed_out"] else f"pytest exit {failed['exit_code']}",
                                 evidence=failed["output"][-2200:],
                             )

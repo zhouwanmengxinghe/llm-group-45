@@ -39,6 +39,21 @@ Any startup command supplied by the user is context, not an executable action.
 """
 
 
+def _json_action(content: str) -> dict:
+    """Parse a JSON action even when a provider wraps it in prose or fences."""
+    decoder = json.JSONDecoder()
+    for index, character in enumerate(content):
+        if character != "{":
+            continue
+        try:
+            value, _ = decoder.raw_decode(content, index)
+        except ValueError:
+            continue
+        if isinstance(value, dict) and isinstance(value.get("kind"), str):
+            return value
+    raise ValueError("model content did not contain a JSON action")
+
+
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
@@ -57,6 +72,9 @@ class ChatDecider:
         self.thinking = settings.get("thinking")
         if self.thinking not in (None, "enabled", "disabled"):
             raise ValueError('model.thinking must be "enabled" or "disabled".')
+        self.json_mode = settings.get("json_mode", False)
+        if not isinstance(self.json_mode, bool):
+            raise ValueError("model.json_mode must be a boolean.")
         key_env = settings.get("api_key_env", "PATCHLAB_API_KEY")
         if not all(isinstance(value, str) and value for value in (self.url, self.model, key_env)):
             raise ValueError("Set model.url, model.name and model.api_key_env in the config (or PATCHLAB_API_URL and PATCHLAB_MODEL).")
@@ -84,6 +102,8 @@ class ChatDecider:
         }
         if self.thinking is not None:
             payload["thinking"] = {"type": self.thinking}
+        if self.json_mode:
+            payload["response_format"] = {"type": "json_object"}
         request = Request(self.url, data=json.dumps(payload).encode("utf-8"), method="POST")
         request.add_header("Content-Type", "application/json")
         if self.key:
@@ -125,7 +145,7 @@ class ChatDecider:
         if finish == "length":
             return {"kind": "invalid", "reason": "model response was truncated"}, usage
         try:
-            action = json.loads(content)
+            action = _json_action(content)
         except (ValueError, TypeError):
             action = {"kind": "invalid", "reason": "model content was not valid JSON"}
         if not isinstance(action, dict):

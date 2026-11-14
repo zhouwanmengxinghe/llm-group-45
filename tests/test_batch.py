@@ -75,3 +75,48 @@ def test_batch_rejects_output_inside_target_repository(tmp_path):
             modes=["feedback"], repeats=1,
         )
     assert not output.exists()
+
+
+def test_swebench_manifest_withholds_scoring_target(tmp_path):
+    repo = tmp_path / "repo"
+    make_fixture(repo)
+    manifest = tmp_path / "tasks.json"
+    manifest.write_text(json.dumps({"tasks": [{
+        "id": "demo__project-123",
+        "repository": str(repo),
+        "revision": "HEAD",
+        "issue": "Reversed intervals should have zero duration.",
+        "editable": ["interval.py"],
+        "target": [],
+        "suite": ["test_interval.py::test_positive"],
+        "evaluation": "swebench",
+    }]}), encoding="utf-8")
+    tasks = load_manifest(manifest)
+    assert tasks[0].task.external_evaluation == "swebench"
+    assert validate_tasks(tasks, PytestRunner(None, 30))[0]["status"] == "valid"
+
+    bad = json.loads(manifest.read_text(encoding="utf-8"))
+    bad["tasks"][0]["target"] = ["test_interval.py::test_empty"]
+    manifest.write_text(json.dumps(bad), encoding="utf-8")
+    with pytest.raises(ValueError, match="must remain withheld"):
+        load_manifest(manifest)
+
+
+def test_manifest_accepts_per_task_runner(tmp_path):
+    repo = tmp_path / "repo"
+    make_fixture(repo)
+    manifest = tmp_path / "tasks.json"
+    write_manifest(manifest, repo)
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["tasks"][0]["runner"] = {
+        "image": "project:test",
+        "container_python": "/opt/env/bin/python",
+        "test_program": ["bin/test", "-C"],
+        "test_suffix": ["-k", "test_public"],
+    }
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    item = load_manifest(manifest)[0]
+    assert item.image == "project:test"
+    assert item.container_python == "/opt/env/bin/python"
+    assert item.test_program == ["bin/test", "-C"]
+    assert item.test_suffix == ["-k", "test_public"]

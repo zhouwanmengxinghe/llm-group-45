@@ -4,3 +4,5 @@
 url = "https://provider.example/v1/chat/completions"
 name = "replace-with-deployment-name"
 api_key_env = "PATCHLAB_API_KEY"
+# Enable only for providers that support OpenAI-compatible JSON mode.
+json_mode = false
