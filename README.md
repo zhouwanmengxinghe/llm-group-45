@@ -91,6 +91,25 @@ Repeat `--editable`, `--target`, or `--suite` to supply multiple entries. Choose
 
 The Docker runner expects a locally available Linux image that provides `python`, pytest, and project dependencies. It disables networking, mounts the candidate read-only, and bounds execution. It does not pull images. `--trusted-local` runs Python and tests directly on the host, and is only for trusted code such as the bundled demo. The proposal controller uses fixed call and per-completion output limits; recorded token usage may be unavailable for some providers.
 
+For the bundled QuixBugs development cases, build the minimal test image once:
+
+```powershell
+docker build -f docker/quixbugs.Dockerfile -t patchlab-quixbugs:dev .
+```
+
+Then pass `--image patchlab-quixbugs:dev` instead of `--trusted-local`. The image contains only
+Python 3.12, pytest 9.1.1, and an unprivileged runtime user. PatchLab still applies its network,
+mount, capability, memory, CPU, process, and timeout restrictions for each test command. Formal
+experiments should record the built image ID. This image intentionally does not contain Git or
+target-project dependencies beyond pytest; repository snapshots are prepared by the host.
+
+Run the opt-in container integration tests after building the image:
+
+```powershell
+$env:PATCHLAB_DOCKER_IMAGE = 'patchlab-quixbugs:dev'
+python -m pytest tests/test_docker_integration.py
+```
+
 ## Run artifacts and evaluation
 
 - `events.jsonl`: model decisions, inspection evidence, test output, and termination.
