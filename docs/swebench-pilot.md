@@ -36,6 +36,16 @@ application, infrastructure, container-cleanup, or grading errors.
 This is one pilot task and therefore demonstrates integration, not a benchmark
 success rate or evidence that the iterative conditions outperform `single`.
 
+## Next three SymPy tasks
+
+The next development batch is frozen before any model run in
+`benchmarks/swebench-sympy-next3-selection.json`. It excludes the completed
+pilot, keeps SymPy Verified tasks labelled below one hour, sorts by instance ID,
+and selects the first three: `sympy__sympy-11618`, `sympy__sympy-12096`, and
+`sympy__sympy-12419`. This deterministic rule prevents replacing tasks based on
+model success or failure. The batch remains development evidence and is not the
+final multi-repository sample.
+
 ## Frozen pilot
 
 The pilot selection is stored in
