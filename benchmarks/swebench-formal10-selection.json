@@ -1,0 +1,36 @@
+{
+  "name": "PatchLab formal 10-task stratified sample",
+  "dataset": "SWE-bench/SWE-bench_Verified",
+  "split": "test",
+  "dataset_revision": "78f471bf655a3137b2e8a75af1501690ec009ec3",
+  "task_repo_revision": "3d07b464b7b311a0cbfb5ed5b2d8a3b96f84a33d",
+  "selection_rule": {
+    "language": "Python",
+    "repository_rule": "Choose the three repositories with the largest eligible counts after exclusions.",
+    "allocation": {
+      "django/django": 4,
+      "sympy/sympy": 3,
+      "sphinx-doc/sphinx": 3
+    },
+    "within_repository_order": "Ascending SHA-256 of dataset_revision + '|' + instance_id.",
+    "exclusion_rule": "Exclude every instance used in PatchLab development before formal selection."
+  },
+  "excluded_development_instances": [
+    "sympy__sympy-11618",
+    "sympy__sympy-12096",
+    "sympy__sympy-12419",
+    "sympy__sympy-20590"
+  ],
+  "instances": [
+    "django__django-12419",
+    "django__django-14580",
+    "django__django-13569",
+    "django__django-12155",
+    "sympy__sympy-21596",
+    "sympy__sympy-16450",
+    "sympy__sympy-15349",
+    "sphinx-doc__sphinx-8595",
+    "sphinx-doc__sphinx-7454",
+    "sphinx-doc__sphinx-8120"
+  ]
+}
