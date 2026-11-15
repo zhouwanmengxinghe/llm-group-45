@@ -255,8 +255,96 @@ def export_predictions(
     return predictions
 
 
+def record_official_results(
+    lock_path: Path, batch_output: Path, official_results: Path, *,
+    mode: str, repeat: int,
+) -> dict:
+    """Validate and attach one official SWE-bench report to a batch."""
+    if mode not in {"single", "feedback", "memory"} or type(repeat) is not int or repeat < 1:
+        raise ValueError("invalid official result selection")
+    lock = load_lock(lock_path)
+    expected = [row["instance_id"] for row in lock["instances"]]
+    batch_output = batch_output.resolve()
+    index = json.loads((batch_output / "batch.json").read_text(encoding="utf-8"))
+    runs = index.get("runs") if isinstance(index, dict) else None
+    if not isinstance(runs, list):
+        raise ValueError("batch output has no run index")
+    selected = [
+        row for row in runs
+        if isinstance(row, dict) and row.get("mode") == mode and row.get("repeat") == repeat
+    ]
+    selected_ids = [row.get("task_id") for row in selected]
+    if len(selected_ids) != len(set(selected_ids)) or set(selected_ids) != set(expected):
+        raise ValueError("batch selection does not exactly match the frozen lock")
+
+    report = json.loads(official_results.read_text(encoding="utf-8"))
+    if not isinstance(report, dict) or report.get("schema_version") not in {1, 2}:
+        raise ValueError("unsupported official SWE-bench result report")
+    submitted = report.get("submitted_ids")
+    if not isinstance(submitted, list) or set(submitted) != set(expected):
+        raise ValueError("official submitted IDs do not match the frozen lock")
+
+    fields = {
+        "resolved": "resolved_ids",
+        "unresolved": "unresolved_ids",
+        "empty_patch": "empty_patch_ids",
+        "infrastructure_failure": "infra_failure_ids",
+        "ambiguous_failure": "ambiguous_failure_ids",
+        "error": "error_ids",
+        "incomplete": "incomplete_ids",
+    }
+    memberships: dict[str, set[str]] = {}
+    for status, field in fields.items():
+        values = report.get(field, [])
+        if not isinstance(values, list) or not all(isinstance(value, str) for value in values):
+            raise ValueError(f"official report has an invalid {field}")
+        if not set(values).issubset(expected):
+            raise ValueError(f"official report {field} contains unknown instances")
+        memberships[status] = set(values)
+    if not (
+        memberships["infrastructure_failure"] | memberships["ambiguous_failure"]
+    ).issubset(memberships["unresolved"] | memberships["error"]):
+        raise ValueError("official failure classification is inconsistent")
+    instances = {}
+    for instance_id in expected:
+        if instance_id in memberships["resolved"]:
+            status = "resolved"
+        elif instance_id in memberships["empty_patch"]:
+            status = "empty_patch"
+        elif instance_id in memberships["incomplete"]:
+            status = "incomplete"
+        elif instance_id in memberships["infrastructure_failure"]:
+            status = "infrastructure_failure"
+        elif instance_id in memberships["ambiguous_failure"]:
+            status = "ambiguous_failure"
+        elif instance_id in memberships["error"]:
+            status = "error"
+        elif instance_id in memberships["unresolved"]:
+            status = "unresolved"
+        else:
+            raise ValueError(f"official report does not classify {instance_id}")
+        instances[instance_id] = status
+
+    record = {
+        "schema": 1,
+        "dataset_revision": lock["dataset_revision"],
+        "task_repo_revision": lock["task_repo_revision"],
+        "mode": mode,
+        "repeat": repeat,
+        "instances": instances,
+        "counts": dict(sorted({
+            status: sum(value == status for value in instances.values())
+            for status in fields
+        }.items())),
+    }
+    output = batch_output / "official" / mode / f"run-{repeat:02d}" / "results.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(record, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+    return record
+
+
 def write_evaluation_plan(
-    lock_path: Path, predictions: Path, task_repository: Path,
+    lock_path: Path, predictions: Path, task_repository: Path | None,
     output: Path, *, run_id: str, workers: int = 1,
 ) -> dict:
     """Write, but deliberately do not execute, the official harness command."""
@@ -272,8 +360,16 @@ def write_evaluation_plan(
     command = [
         "swebench", "eval", DATASET_ALIASES[lock["dataset"]],
         "-p", str(predictions.resolve()), "--run-id", run_id,
-        "-j", str(workers), "--task-repo", str(task_repository.resolve()),
+        "-j", str(workers),
     ]
+    if task_repository is not None:
+        task_repository = task_repository.resolve()
+        actual_revision = _git_head(task_repository)
+        if actual_revision != lock["task_repo_revision"]:
+            raise ValueError(
+                f"task repository is at {actual_revision}, expected {lock['task_repo_revision']}"
+            )
+        command.extend(["--task-repo", str(task_repository)])
     for instance_id in expected:
         command.extend(["-i", instance_id])
     plan = {

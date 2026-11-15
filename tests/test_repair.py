@@ -26,6 +26,8 @@ def test_recovers_from_a_regression(tmp_path, mode):
     repo, out, result, trace = run(tmp_path, mode)
     assert result["status"] == "verified", result
     assert result["attempts"] == 2
+    assert result["provider_requests"] == result["model_calls"]
+    assert result["provider_usage_complete"] is False
     assert [r["exit_code"] for r in trace if r["event"] == "candidate_regression"] == [1, 0]
     assert (out / "result.json").is_file()
     subprocess.run(["git", "-C", str(repo), "apply", "--check", str(out / "final.patch")], check=True)

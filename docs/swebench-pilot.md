@@ -8,9 +8,10 @@ output. A patch that preserves the public suite is recorded as
 `candidate_ready`, not `verified`. Only the upstream SWE-bench harness may mark
 the task resolved.
 
-No live SWE-bench task has been run yet. The files and commands below prepare a
-single-instance pilot and deliberately stop before model calls or official
-evaluation.
+The files and commands below define the reproducible single-instance pilot.
+Live single, feedback, and memory development runs have exercised the complete
+generation and official-evaluation path; they remain smoke evidence rather than
+a formal experiment.
 
 The public-suite environment check completed on 2026-11-14 using Docker Desktop
 on an ARM64 Mac with the upstream AMD64 image under emulation. SymPy's public
@@ -96,8 +97,8 @@ python -m patchlab swebench-manifest \
   --output /path/to/swebench-pilot-manifest.json
 ```
 
-Validate this manifest before any model call. Validation may run public project
-tests, so it belongs to the test phase and has not been executed yet.
+Validate this manifest before any model call. Validation runs only the selected
+public project tests and must succeed on the frozen baseline.
 
 ```bash
 python -m patchlab validate-manifest \
@@ -126,34 +127,44 @@ python -m patchlab swebench-export \
 ```
 
 Finally, write a reviewable evaluation plan. This command does not invoke the
-harness:
+harness. Omit `--task-repo` when the pinned published image is already present;
+pass it only when deliberately building from the pinned task repository.
 
 ```bash
 python -m patchlab swebench-eval-plan \
   --lock benchmarks/swebench-pilot-lock.json \
   --predictions /path/to/predictions.jsonl \
-  --task-repo /path/to/swe-bench-tasks \
   --run-id patchlab-pilot-01 --workers 1 \
   --output /path/to/evaluation-plan.json
 ```
 
-Review disk, memory, architecture, image source, and run ID before executing the
-saved command. The upstream documentation recommends substantial Docker disk
-space and memory. On Apple Silicon, build from the pinned task repository rather
-than assuming the published x86-64 image can run natively.
+After the official harness writes `results.json`, validate and attach it to the
+batch, then rebuild the CSV and mode summary automatically:
 
-## Stop point and remaining decisions
+```bash
+python -m patchlab swebench-record-score \
+  --lock benchmarks/swebench-pilot-lock.json \
+  --batch-output /path/to/batch \
+  --official-results /path/to/results.json \
+  --mode single --repeat 1
+```
 
-Preparation currently stops before:
+Review disk, memory, architecture, image source, dataset revision, and run ID
+before executing the saved command. Published x86-64 images require an AMD64
+compatibility check on Apple Silicon.
 
-1. cloning the SymPy and Astropy source repositories;
-2. selecting public regression tests and editable source allowlists;
-3. installing the upstream SWE-bench CLI and building task images;
-4. validating the public suites;
-5. calling DeepSeek;
-6. running the official grader.
+## Iterative-mode smoke result
 
-Before those steps, decide whether the first pilot should use only the upstream
-SymPy quick-start task, whether to build locally or use a compatible published
-image, and how much disk space may be used.
+On 2026-11-16, feedback and memory were independently run on the same frozen
+pilot with `deepseek-flash`, thinking disabled, JSON mode enabled, a 16-decision
+limit, a five-candidate limit, and a 1200-token completion limit. Each mode used
+two decisions and one candidate, passed all 103 selected public tests, and was
+reported resolved by the pinned official harness. This confirms integration
+only: the task was already used in development and the two modes did not need
+to recover from a failed candidate.
+
+Before formal runs, freeze a new result-independent task selection, public-test
+and editable-source rules, model configuration, timeouts, API budget, and Docker
+disk budget. Run every condition on exactly the same instances and retain empty
+patches and failures.
 

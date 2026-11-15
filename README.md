@@ -96,9 +96,11 @@ The Docker runner expects a locally available Linux image that provides `python`
 SWE-bench Verified preparation is documented in
 [the pilot guide](docs/swebench-pilot.md). The integration freezes upstream
 revisions, excludes gold and scoring artifacts from model context, exports the
-official prediction schema, and records an evaluation command without running
-it. SWE-bench patches remain `candidate_ready` until the independent upstream
-harness grades them; no live SWE-bench result is claimed yet.
+official prediction schema, and records a reviewable evaluation command.
+SWE-bench patches remain `candidate_ready` until the independent upstream
+harness grades them. An official result report can then be attached with
+`swebench-record-score`; `runs.csv` and `summary.json` will include resolved,
+unresolved, empty-patch, infrastructure-failure, and error outcomes.
 
 Before spending model tokens, validate the frozen five-task QuixBugs development manifest:
 
@@ -126,7 +128,11 @@ held-out benchmark score.
 - `candidate-N.patch`: reviewable proposals, including ones that did not pass verification.
 - `final.patch`: generated only after the supplied targeted and regression tests both pass.
 
-Local success means the supplied tests passed. Five QuixBugs development examples are included, but SWE-bench provisioning and independent held-out grading are not implemented. Docker and the latest live-provider workflow still need deployment verification. The comparison command groups recorded runs by model and condition; keep task sets and configuration matched when using it for an experiment.
+Local success means the supplied tests passed. QuixBugs remains development
+data, while SWE-bench success must come from an attached official result report.
+The live Docker/provider/official-grader path has been smoke-tested on one
+SymPy development instance; that single reused task is not a formal success
+rate. Keep task sets and all configuration matched when comparing conditions.
 
 ## 小组分工与后续接口
 

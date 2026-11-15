@@ -5,8 +5,10 @@ import subprocess
 import pytest
 
 from patchlab.swebench import (
-    export_predictions, freeze_selection, write_evaluation_plan, write_patchlab_manifest,
+    export_predictions, freeze_selection, record_official_results,
+    write_evaluation_plan, write_patchlab_manifest,
 )
+from patchlab.batch import report_batch
 
 
 TASK = "demo__project-123"
@@ -89,7 +91,14 @@ def test_export_and_evaluation_plan(tmp_path):
     run = batch / TASK / "single" / "run-01"
     run.mkdir(parents=True)
     result = run / "result.json"
-    result.write_text(json.dumps({"status": "verified"}), encoding="utf-8")
+    result.write_text(json.dumps({
+        "status": "verified", "attempts": 1, "model_calls": 1,
+        "inspection_calls": 0, "verified_candidates": 1,
+        "elapsed_seconds": 1.0, "tokens_reported": 10,
+        "calls_with_usage": 1, "provider_requests": 1,
+        "provider_responses_with_usage": 1, "provider_tokens_reported": 10,
+        "provider_usage_complete": True,
+    }), encoding="utf-8")
     (run / "final.patch").write_text("--- a/a.py\n+++ b/a.py\n", encoding="utf-8")
     (batch / "batch.json").write_text(json.dumps({"runs": [{
         "task_id": TASK, "mode": "single", "repeat": 1,
@@ -112,6 +121,47 @@ def test_export_and_evaluation_plan(tmp_path):
     assert plan["execute"] is False
     assert plan["command"][:3] == ["swebench", "eval", "verified"]
     assert plan["command"][-2:] == ["-i", TASK]
+
+    no_build_plan = write_evaluation_plan(
+        lock_path, predictions_path, None, tmp_path / "eval-plan-no-build.json",
+        run_id="pilot-02", workers=1,
+    )
+    assert "--task-repo" not in no_build_plan["command"]
+
+    official_path = tmp_path / "official.json"
+    official_path.write_text(json.dumps({
+        "schema_version": 2,
+        "submitted_ids": [TASK],
+        "resolved_ids": [TASK],
+        "unresolved_ids": [],
+        "empty_patch_ids": [],
+        "infra_failure_ids": [],
+        "ambiguous_failure_ids": [],
+        "error_ids": [],
+        "incomplete_ids": [],
+    }), encoding="utf-8")
+    official = record_official_results(
+        lock_path, batch, official_path, mode="single", repeat=1,
+    )
+    assert official["instances"] == {TASK: "resolved"}
+    report = report_batch(batch)
+    assert report["modes"][0]["official_resolved_rate"] == 1.0
+
+    official_path.write_text(json.dumps({
+        "schema_version": 2,
+        "submitted_ids": [TASK],
+        "resolved_ids": [],
+        "unresolved_ids": [TASK],
+        "empty_patch_ids": [],
+        "infra_failure_ids": [TASK],
+        "ambiguous_failure_ids": [],
+        "error_ids": [],
+        "incomplete_ids": [],
+    }), encoding="utf-8")
+    classified = record_official_results(
+        lock_path, batch, official_path, mode="single", repeat=1,
+    )
+    assert classified["instances"] == {TASK: "infrastructure_failure"}
 
 
 def test_manifest_uses_issue_but_withholds_scoring_tests(tmp_path):

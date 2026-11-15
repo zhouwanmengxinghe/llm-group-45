@@ -45,6 +45,13 @@ def test_config_and_provider_request(tmp_path, monkeypatch):
     assert captured["payload"]["thinking"] == {"type": "disabled"}
     assert captured["payload"]["response_format"] == {"type": "json_object"}
     assert action["kind"] == "files" and usage["total_tokens"] == 17
+    assert client.summarize("older evidence")
+    assert client.usage_snapshot() == {
+        "request_attempts": 2,
+        "responses_with_usage": 2,
+        "tokens_reported": 34,
+        "requests_by_purpose": {"decision": 1, "summary": 1},
+    }
     monkeypatch.setenv("PATCHLAB_MODEL", "model-two")
     assert ChatDecider(512, config).model == "model-two"
 
@@ -95,3 +102,5 @@ def test_model_retries_transient_http_error(tmp_path, monkeypatch):
     action, _ = client.decide({})
     assert action["kind"] == "stop" and opener.calls == 2
     assert events[0]["status"] == 503
+    assert client.usage_snapshot()["request_attempts"] == 2
+    assert client.usage_snapshot()["requests_by_purpose"] == {"decision": 2}
