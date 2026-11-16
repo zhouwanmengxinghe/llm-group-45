@@ -5,6 +5,7 @@ from __future__ import annotations
 import difflib
 import os
 from pathlib import Path, PurePosixPath
+import posixpath
 import re
 import shutil
 import subprocess
@@ -32,10 +33,20 @@ def snapshot(repo: Path, revision: str, destination: Path) -> str:
         archive.seek(0)
         with tarfile.open(fileobj=archive) as stream:
             for member in stream:
-                if not (member.isfile() or member.isdir()):
-                    raise ValueError("The MVP accepts repositories without archived links or special files.")
-                if any(p.casefold() == ".git" for p in PurePosixPath(member.name).parts):
+                member_path = PurePosixPath(member.name)
+                if any(p.casefold() == ".git" for p in member_path.parts):
                     raise ValueError("Unexpected Git metadata in the snapshot.")
+                if member.issym():
+                    target = PurePosixPath(member.linkname)
+                    resolved = PurePosixPath(posixpath.normpath(str(member_path.parent / target)))
+                    if (
+                        target.is_absolute()
+                        or ".." in resolved.parts
+                        or any(p.casefold() == ".git" for p in resolved.parts)
+                    ):
+                        raise ValueError("Snapshot symlink must stay inside the repository.")
+                elif not (member.isfile() or member.isdir()):
+                    raise ValueError("Snapshot contains an unsupported special file.")
                 stream.extract(member, destination, filter="data")
     return commit
 
@@ -168,6 +179,26 @@ class PytestRunner:
         self.python_executable = python_executable
         self.test_program = list(test_program) if test_program else None
         self.test_suffix = list(test_suffix) if test_suffix else []
+
+    def validate_selectors(self, root: Path, selectors: list[str]) -> None:
+        """Validate pytest paths or bounded labels used by a custom test program."""
+        frozen = root.resolve()
+        for selector in selectors:
+            name = selector.split("::", 1)[0]
+            if (
+                not name
+                or name.startswith("-")
+                or not re.fullmatch(r"[A-Za-z0-9_./:+-]+", selector)
+                or ".." in PurePosixPath(name).parts
+            ):
+                raise ValueError(f"invalid test selector: {selector}")
+            if self.test_program and "/" not in name and not name.endswith(".py"):
+                if not re.fullmatch(r"[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*", name):
+                    raise ValueError(f"invalid custom test label: {selector}")
+                continue
+            selected = (root / name).resolve()
+            if not selected.is_relative_to(frozen) or not selected.exists():
+                raise ValueError(f"invalid test selector: {selector}")
 
     def run(self, root: Path, selectors: list[str]) -> dict:
         import sys

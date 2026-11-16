@@ -80,11 +80,7 @@ def execute(
                 result["revision"] = snapshot(task.repository, task.revision, frozen)
                 bench = Workbench(frozen, task.editable)
                 record("started", revision=result["revision"], mode=mode, model=model.model)
-                for selector in task.target + task.suite:
-                    name = selector.split("::", 1)[0]
-                    path = (frozen / name).resolve()
-                    if not name or not path.is_relative_to(frozen.resolve()) or not path.exists():
-                        raise ValueError(f"Invalid pytest selector: {selector}")
+                runner.validate_selectors(frozen, task.target + task.suite)
                 check = area / "initial"
                 shutil.copytree(frozen, check)
                 if task.external_evaluation:

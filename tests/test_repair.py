@@ -6,7 +6,7 @@ import pytest
 
 from patchlab.demo import Demonstrator, make_fixture
 from patchlab.experiment import Task, execute
-from patchlab.workbench import PytestRunner, Workbench
+from patchlab.workbench import PytestRunner, Workbench, snapshot
 
 
 def run(tmp_path, mode="feedback", approval=None):
@@ -99,3 +99,41 @@ def test_container_python_is_bounded():
     assert runner.test_suffix == ["-k", "test_public"]
     with pytest.raises(ValueError, match="without shell syntax"):
         PytestRunner("image:local", 30, test_program=["bin/test", ";", "id"])
+
+
+def test_custom_test_program_accepts_bounded_module_labels(tmp_path):
+    runner = PytestRunner("image:local", 30, test_program=["tests/runtests.py"])
+    runner.validate_selectors(tmp_path, ["middleware.test_security"])
+    for selector in ("--help", "package..test_module", "../outside.py"):
+        with pytest.raises(ValueError, match="invalid"):
+            runner.validate_selectors(tmp_path, [selector])
+
+
+def test_snapshot_preserves_safe_repository_symlink(tmp_path):
+    repo = tmp_path / "repo"
+    make_fixture(repo)
+    (repo / "interval_alias.py").symlink_to("interval.py")
+    subprocess.run(["git", "-C", str(repo), "add", "interval_alias.py"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-m", "Add safe symlink"],
+        check=True, stdout=subprocess.DEVNULL,
+    )
+
+    frozen = tmp_path / "frozen"
+    snapshot(repo, "HEAD", frozen)
+    assert (frozen / "interval_alias.py").is_symlink()
+    assert (frozen / "interval_alias.py").read_bytes() == (frozen / "interval.py").read_bytes()
+
+
+def test_snapshot_rejects_symlink_outside_repository(tmp_path):
+    repo = tmp_path / "repo"
+    make_fixture(repo)
+    (repo / "escape.py").symlink_to("../outside.py")
+    subprocess.run(["git", "-C", str(repo), "add", "escape.py"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-m", "Add unsafe symlink"],
+        check=True, stdout=subprocess.DEVNULL,
+    )
+
+    with pytest.raises(ValueError, match="stay inside"):
+        snapshot(repo, "HEAD", tmp_path / "frozen")

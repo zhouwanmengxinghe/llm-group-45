@@ -123,11 +123,7 @@ def validate_tasks(tasks: list[BatchTask], runner: PytestRunner) -> list[dict]:
                 frozen = Path(temp) / "frozen"
                 row["revision"] = snapshot(item.task.repository, item.task.revision, frozen)
                 Workbench(frozen, item.task.editable)
-                for selector in item.task.target + item.task.suite:
-                    name = selector.split("::", 1)[0]
-                    selected = (frozen / name).resolve()
-                    if not name or not selected.is_relative_to(frozen.resolve()) or not selected.exists():
-                        raise ValueError(f"invalid pytest selector: {selector}")
+                task_runner.validate_selectors(frozen, item.task.target + item.task.suite)
                 check = Path(temp) / "initial"
                 shutil.copytree(frozen, check)
                 if item.task.external_evaluation:
