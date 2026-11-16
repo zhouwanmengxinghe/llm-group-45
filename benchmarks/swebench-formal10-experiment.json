@@ -3,7 +3,7 @@
   "name": "PatchLab formal 10-task three-condition experiment",
   "selection": "swebench-formal10-selection.json",
   "lock": "swebench-formal10-lock.json",
-  "implementation_revision": "664a76b99e501ea08a47b3ffb614fbd9926e96fc",
+  "implementation_revision": "e5f845bc0ea084845617d45f878a284067cd7eaa",
   "conditions": [
     "single",
     "feedback",
