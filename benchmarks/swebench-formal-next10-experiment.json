@@ -37,7 +37,7 @@
     "platform": "linux/amd64",
     "docker_network": "none",
     "serial_tasks": true,
-    "batch_output": "/Users/xiao/Downloads/llm/patchlab-runs/formal/formal-next10-run-01",
+    "batch_output": "/Users/xiao/Downloads/llm/patchlab-runs/formal-next10/formal-next10-run-01",
     "docker_disk_budget_gb": 30
   },
   "interpretation": {
