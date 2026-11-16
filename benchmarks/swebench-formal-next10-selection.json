@@ -1,0 +1,48 @@
+{
+  "name": "PatchLab formal second 10-task stratified sample",
+  "dataset": "SWE-bench/SWE-bench_Verified",
+  "split": "test",
+  "dataset_revision": "78f471bf655a3137b2e8a75af1501690ec009ec3",
+  "task_repo_revision": "3d07b464b7b311a0cbfb5ed5b2d8a3b96f84a33d",
+  "selection_rule": {
+    "language": "Python",
+    "repository_rule": "Reuse the first formal sample's three repositories and 4/3/3 allocation.",
+    "allocation": {
+      "django/django": 4,
+      "sympy/sympy": 3,
+      "sphinx-doc/sphinx": 3
+    },
+    "within_repository_order": "Ascending SHA-256 of dataset_revision + '|' + instance_id, continuing after all prior exclusions.",
+    "exclusion_rule": "Exclude every development instance and every instance in the first formal 10-task sample."
+  },
+  "excluded_development_instances": [
+    "sympy__sympy-11618",
+    "sympy__sympy-12096",
+    "sympy__sympy-12419",
+    "sympy__sympy-20590"
+  ],
+  "excluded_prior_formal_instances": [
+    "django__django-12419",
+    "django__django-14580",
+    "django__django-13569",
+    "django__django-12155",
+    "sympy__sympy-21596",
+    "sympy__sympy-16450",
+    "sympy__sympy-15349",
+    "sphinx-doc__sphinx-8595",
+    "sphinx-doc__sphinx-7454",
+    "sphinx-doc__sphinx-8120"
+  ],
+  "instances": [
+    "django__django-16527",
+    "django__django-11265",
+    "django__django-15128",
+    "django__django-12209",
+    "sympy__sympy-22914",
+    "sympy__sympy-23824",
+    "sympy__sympy-17139",
+    "sphinx-doc__sphinx-8551",
+    "sphinx-doc__sphinx-9591",
+    "sphinx-doc__sphinx-7985"
+  ]
+}
