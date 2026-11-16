@@ -21,6 +21,7 @@ def test_config_and_provider_request(tmp_path, monkeypatch):
     monkeypatch.setenv("TEST_MODEL_KEY", "secret")
     client = ChatDecider(512, config)
     captured = {}
+    payloads = []
 
     class Response:
         def __enter__(self): return self
@@ -35,6 +36,7 @@ def test_config_and_provider_request(tmp_path, monkeypatch):
             captured["url"] = request.full_url
             captured["auth"] = request.get_header("Authorization")
             captured["payload"] = json.loads(request.data)
+            payloads.append(captured["payload"])
             return Response()
 
     client.opener = Opener()
@@ -46,6 +48,7 @@ def test_config_and_provider_request(tmp_path, monkeypatch):
     assert captured["payload"]["response_format"] == {"type": "json_object"}
     assert action["kind"] == "files" and usage["total_tokens"] == 17
     assert client.summarize("older evidence")
+    assert "response_format" not in payloads[-1]
     assert client.usage_snapshot() == {
         "request_attempts": 2,
         "responses_with_usage": 2,

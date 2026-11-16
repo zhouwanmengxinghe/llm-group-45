@@ -107,7 +107,7 @@ class ChatDecider:
         }
 
     def _complete(
-        self, messages: list[dict], *, purpose: str,
+        self, messages: list[dict], *, purpose: str, json_output: bool = False,
     ) -> tuple[str, dict | None, str | None]:
         payload = {
             "model": self.model,
@@ -117,7 +117,7 @@ class ChatDecider:
         }
         if self.thinking is not None:
             payload["thinking"] = {"type": self.thinking}
-        if self.json_mode:
+        if json_output:
             payload["response_format"] = {"type": "json_object"}
         request = Request(self.url, data=json.dumps(payload).encode("utf-8"), method="POST")
         request.add_header("Content-Type", "application/json")
@@ -162,7 +162,7 @@ class ChatDecider:
         content, usage, finish = self._complete([
             {"role": "system", "content": SIMPLE_SYSTEM if context.get("workflow") == "simple" else SYSTEM},
             {"role": "user", "content": json.dumps(context, ensure_ascii=False)},
-        ], purpose="decision")
+        ], purpose="decision", json_output=self.json_mode)
         if finish == "length":
             return {"kind": "invalid", "reason": "model response was truncated"}, usage
         try:
