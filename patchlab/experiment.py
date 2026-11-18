@@ -49,6 +49,9 @@ def execute(
         "status": "execution_error", "mode": mode, "model": model.model,
         "attempts": 0, "verified_candidates": 0, "model_calls": 0,
         "inspection_calls": 0, "tokens_reported": 0, "calls_with_usage": 0,
+        "provider_requests": None, "provider_responses_with_usage": None,
+        "provider_tokens_reported": None, "provider_usage_complete": False,
+        "provider_requests_by_purpose": {},
         "call_limit": calls, "attempt_limit": 1 if mode == "single" else attempts,
         "completion_limit": getattr(model, "completion_limit", None),
         "test_timeout": runner.timeout, "approval_enabled": approve is not None,
@@ -58,6 +61,8 @@ def execute(
         "test_suffix": runner.test_suffix,
         "external_evaluation": task.external_evaluation,
     }
+    snapshot_usage = getattr(model, "usage_snapshot", None)
+    provider_start = snapshot_usage() if callable(snapshot_usage) else None
     with (output / "events.jsonl").open("w", encoding="utf-8") as events:
         def record(event: str, **details):
             entry = {"event": event, "at_seconds": round(time.monotonic() - start, 3), **details}
@@ -75,11 +80,7 @@ def execute(
                 result["revision"] = snapshot(task.repository, task.revision, frozen)
                 bench = Workbench(frozen, task.editable)
                 record("started", revision=result["revision"], mode=mode, model=model.model)
-                for selector in task.target + task.suite:
-                    name = selector.split("::", 1)[0]
-                    path = (frozen / name).resolve()
-                    if not name or not path.is_relative_to(frozen.resolve()) or not path.exists():
-                        raise ValueError(f"Invalid pytest selector: {selector}")
+                runner.validate_selectors(frozen, task.target + task.suite)
                 check = area / "initial"
                 shutil.copytree(frozen, check)
                 if task.external_evaluation:
@@ -211,6 +212,42 @@ def execute(
             result["reason"] = str(exc)[:2000]
             record("error", error_type=type(exc).__name__, message=result["reason"])
         finally:
+            provider_end = snapshot_usage() if callable(snapshot_usage) else None
+            if isinstance(provider_start, dict) and isinstance(provider_end, dict):
+                result["provider_requests"] = (
+                    provider_end.get("request_attempts", 0)
+                    - provider_start.get("request_attempts", 0)
+                )
+                result["provider_responses_with_usage"] = (
+                    provider_end.get("responses_with_usage", 0)
+                    - provider_start.get("responses_with_usage", 0)
+                )
+                result["provider_tokens_reported"] = (
+                    provider_end.get("tokens_reported", 0)
+                    - provider_start.get("tokens_reported", 0)
+                )
+                start_purposes = provider_start.get("requests_by_purpose", {})
+                end_purposes = provider_end.get("requests_by_purpose", {})
+                if isinstance(start_purposes, dict) and isinstance(end_purposes, dict):
+                    result["provider_requests_by_purpose"] = {
+                        purpose: count - start_purposes.get(purpose, 0)
+                        for purpose, count in end_purposes.items()
+                        if count - start_purposes.get(purpose, 0)
+                    }
+                result["provider_usage_complete"] = (
+                    result["provider_requests"]
+                    == result["provider_responses_with_usage"]
+                )
+            else:
+                result["provider_requests"] = result["model_calls"]
+                result["provider_responses_with_usage"] = result["calls_with_usage"]
+                result["provider_tokens_reported"] = result["tokens_reported"]
+                result["provider_requests_by_purpose"] = {
+                    "decision": result["model_calls"]
+                }
+                result["provider_usage_complete"] = (
+                    result["model_calls"] == result["calls_with_usage"]
+                )
             result["elapsed_seconds"] = round(time.monotonic() - start, 3)
             record("finished", status=result["status"])
             (output / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=True) + "\n",

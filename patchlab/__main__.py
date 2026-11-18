@@ -16,7 +16,8 @@ from .demo import run_demo
 from .experiment import Task, execute
 from .workbench import PytestRunner
 from .swebench import (
-    export_predictions, freeze_selection, write_evaluation_plan, write_patchlab_manifest,
+    export_predictions, freeze_selection, record_official_results,
+    write_evaluation_plan, write_patchlab_manifest,
 )
 
 
@@ -150,12 +151,23 @@ def main() -> int:
     swe_manifest.add_argument("--lock", required=True, type=Path)
     swe_manifest.add_argument("--workspaces", required=True, type=Path)
     swe_manifest.add_argument("--output", required=True, type=Path)
+    swe_score = commands.add_parser(
+        "swebench-record-score", help="Attach an official SWE-bench result report to a batch."
+    )
+    swe_score.add_argument("--lock", required=True, type=Path)
+    swe_score.add_argument("--batch-output", required=True, type=Path)
+    swe_score.add_argument("--official-results", required=True, type=Path)
+    swe_score.add_argument("--mode", required=True, choices=["single", "feedback", "memory"])
+    swe_score.add_argument("--repeat", type=positive, default=1)
     swe_plan = commands.add_parser(
         "swebench-eval-plan", help="Write an official evaluation command without executing it."
     )
     swe_plan.add_argument("--lock", required=True, type=Path)
     swe_plan.add_argument("--predictions", required=True, type=Path)
-    swe_plan.add_argument("--task-repo", required=True, type=Path)
+    swe_plan.add_argument(
+        "--task-repo", type=Path,
+        help="Pinned task repo used only when images must be built locally.",
+    )
     swe_plan.add_argument("--output", required=True, type=Path)
     swe_plan.add_argument("--run-id", required=True)
     swe_plan.add_argument("--workers", type=positive, default=1)
@@ -207,6 +219,14 @@ def main() -> int:
         if args.command == "swebench-manifest":
             result = write_patchlab_manifest(args.lock, args.workspaces, args.output)
             print(json.dumps({"tasks": len(result["tasks"]), "output": str(args.output)}, indent=2))
+            return 0
+        if args.command == "swebench-record-score":
+            result = record_official_results(
+                args.lock, args.batch_output, args.official_results,
+                mode=args.mode, repeat=args.repeat,
+            )
+            report_batch(args.batch_output)
+            print(json.dumps(result, indent=2))
             return 0
         if args.command == "swebench-eval-plan":
             result = write_evaluation_plan(

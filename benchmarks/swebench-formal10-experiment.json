@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "name": "PatchLab formal 10-task three-condition experiment",
+  "selection": "swebench-formal10-selection.json",
+  "lock": "swebench-formal10-lock.json",
+  "implementation_revision": "05959ae33bd496125aeb334c5625a368c6a0b24c",
+  "conditions": [
+    "single",
+    "feedback",
+    "memory"
+  ],
+  "repeats": 1,
+  "model": {
+    "provider": "DeepSeek official API",
+    "name": "deepseek-flash",
+    "thinking": "disabled",
+    "json_mode": true,
+    "temperature": 0
+  },
+  "limits": {
+    "logical_decisions_per_run": 16,
+    "single_candidates_per_run": 1,
+    "iterative_candidates_per_run": 5,
+    "completion_tokens_per_request": 1200,
+    "public_test_timeout_seconds": 600,
+    "official_test_timeout_seconds": 1800,
+    "official_workers": 1,
+    "total_logical_decision_limit": 480
+  },
+  "accounting": {
+    "record_provider_request_attempts": true,
+    "include_summary_requests": true,
+    "include_retry_attempts": true,
+    "mark_token_totals_incomplete_when_any_response_lacks_usage": true
+  },
+  "execution": {
+    "platform": "linux/amd64",
+    "docker_network": "none",
+    "serial_tasks": true,
+    "batch_output": "/Users/xiao/Downloads/llm/patchlab-runs/formal/formal10-run-01",
+    "docker_disk_budget_gb": 30
+  },
+  "interpretation": {
+    "official_swebench_results_are_primary": true,
+    "retain_empty_patches_and_failures": true,
+    "do_not_replace_instances_after_model_calls": true,
+    "development_instances_are_excluded": true
+  }
+}

@@ -123,11 +123,7 @@ def validate_tasks(tasks: list[BatchTask], runner: PytestRunner) -> list[dict]:
                 frozen = Path(temp) / "frozen"
                 row["revision"] = snapshot(item.task.repository, item.task.revision, frozen)
                 Workbench(frozen, item.task.editable)
-                for selector in item.task.target + item.task.suite:
-                    name = selector.split("::", 1)[0]
-                    selected = (frozen / name).resolve()
-                    if not name or not selected.is_relative_to(frozen.resolve()) or not selected.exists():
-                        raise ValueError(f"invalid pytest selector: {selector}")
+                task_runner.validate_selectors(frozen, item.task.target + item.task.suite)
                 check = Path(temp) / "initial"
                 shutil.copytree(frozen, check)
                 if item.task.external_evaluation:
@@ -196,6 +192,7 @@ def report_batch(output: Path) -> dict:
     if not isinstance(indexed, list):
         raise ValueError("batch.json does not contain a runs list")
     details = []
+    official_cache: dict[tuple[str, int], dict] = {}
     for entry in indexed:
         if not isinstance(entry, dict) or not isinstance(entry.get("result"), str):
             raise ValueError("batch.json contains an invalid run entry")
@@ -203,22 +200,41 @@ def report_batch(output: Path) -> dict:
         if not result_path.is_relative_to(output) or not result_path.is_file():
             raise ValueError(f"missing or unsafe result path: {entry['result']}")
         result = json.loads(result_path.read_text(encoding="utf-8"))
+        mode, repeat = entry.get("mode"), entry.get("repeat")
+        official_status = None
+        if isinstance(mode, str) and type(repeat) is int and repeat >= 1:
+            key = (mode, repeat)
+            official_path = output / "official" / mode / f"run-{repeat:02d}" / "results.json"
+            if official_path.is_file():
+                if key not in official_cache:
+                    official = json.loads(official_path.read_text(encoding="utf-8"))
+                    instances = official.get("instances") if isinstance(official, dict) else None
+                    if not isinstance(instances, dict):
+                        raise ValueError(f"invalid official result record: {official_path}")
+                    official_cache[key] = instances
+                official_status = official_cache[key].get(entry.get("task_id"))
         details.append({
-            "task_id": entry.get("task_id"), "mode": entry.get("mode"),
-            "repeat": entry.get("repeat"), "status": result.get("status"),
+            "task_id": entry.get("task_id"), "mode": mode,
+            "repeat": repeat, "status": result.get("status"),
+            "official_status": official_status,
             "attempts": result.get("attempts"), "model_calls": result.get("model_calls"),
             "inspection_calls": result.get("inspection_calls"),
             "tested_candidates": result.get("verified_candidates"),
             "elapsed_seconds": result.get("elapsed_seconds"),
             "tokens_reported": result.get("tokens_reported"),
             "calls_with_usage": result.get("calls_with_usage"),
+            "provider_requests": result.get("provider_requests"),
+            "provider_responses_with_usage": result.get("provider_responses_with_usage"),
+            "provider_tokens_reported": result.get("provider_tokens_reported"),
+            "provider_usage_complete": result.get("provider_usage_complete"),
             "reason": result.get("reason"), "result": entry["result"],
         })
 
     fields = [
-        "task_id", "mode", "repeat", "status", "attempts", "model_calls",
+        "task_id", "mode", "repeat", "status", "official_status", "attempts", "model_calls",
         "inspection_calls", "tested_candidates", "elapsed_seconds", "tokens_reported",
-        "calls_with_usage", "reason", "result",
+        "calls_with_usage", "provider_requests", "provider_responses_with_usage",
+        "provider_tokens_reported", "provider_usage_complete", "reason", "result",
     ]
     with (output / "runs.csv").open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields)
@@ -231,16 +247,38 @@ def report_batch(output: Path) -> dict:
     modes = []
     for mode, rows in sorted(grouped.items()):
         verified = [row for row in rows if row["status"] == "verified"]
-        complete_usage = [
-            row["tokens_reported"] for row in rows
-            if isinstance(row["model_calls"], int) and row["model_calls"] > 0
-            and row["calls_with_usage"] == row["model_calls"]
-            and isinstance(row["tokens_reported"], int)
+        official = [row for row in rows if isinstance(row["official_status"], str)]
+        official_resolved = [row for row in official if row["official_status"] == "resolved"]
+        complete_usage = []
+        for row in rows:
+            if (
+                row["provider_usage_complete"] is True
+                and isinstance(row["provider_tokens_reported"], int)
+            ):
+                complete_usage.append(row["provider_tokens_reported"])
+            elif (
+                row["provider_requests"] is None
+                and isinstance(row["model_calls"], int) and row["model_calls"] > 0
+                and row["calls_with_usage"] == row["model_calls"]
+                and isinstance(row["tokens_reported"], int)
+            ):
+                complete_usage.append(row["tokens_reported"])
+        provider_requests = [
+            row["provider_requests"] for row in rows
+            if isinstance(row["provider_requests"], int)
         ]
         modes.append({
             "mode": mode, "runs": len(rows), "verified": len(verified),
             "candidate_ready": sum(row["status"] == "candidate_ready" for row in rows),
             "verified_rate": len(verified) / len(rows),
+            "official_scored": len(official),
+            "official_resolved": len(official_resolved),
+            "official_resolved_rate": (
+                len(official_resolved) / len(official) if official else None
+            ),
+            "official_statuses": dict(sorted(Counter(
+                row["official_status"] for row in official
+            ).items())),
             "recovered_after_failed_candidate": sum(
                 isinstance(row["attempts"], int) and row["attempts"] > 1 for row in verified
             ),
@@ -248,6 +286,7 @@ def report_batch(output: Path) -> dict:
             "median_elapsed_seconds": median(row["elapsed_seconds"] for row in rows),
             "median_attempts": median(row["attempts"] for row in rows),
             "median_model_calls": median(row["model_calls"] for row in rows),
+            "median_provider_requests": median(provider_requests) if provider_requests else None,
             "complete_token_records": len(complete_usage),
             "median_total_tokens_when_complete": median(complete_usage) if complete_usage else None,
         })
