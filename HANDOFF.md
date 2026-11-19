@@ -17,7 +17,9 @@ The English final report is translated from the saved Chinese Word master and in
 
 Before upload, the members should review the English report and AI-use declaration and rehearse startup and the live demonstration on the presentation machine. Upload the report PDF and source ZIP separately as required. Prepare the two-minute pitch and live changed-request demonstration; all members must attend. The supplied guide states 25 November 2026, 23:59 Hong Kong time as the deadline and 1 or 8 December for assigned presentations. Check Moodle for the assigned slot, any later announcement and the published marking rubric.
 
-No Java/Defects4J extension, no full-project correctness guarantee, no web approval/application button and no physical-Mac acceptance test. Generated test oracles can be wrong; inspect them before trusting a repair. First candidates were not identical in every experimental pair, so the observed difference is not a clean causal estimate of iteration alone. Local snapshots do not make host execution a security sandbox.
+Browser repair now offers candidate review before testing and a separate confirmed application action for passing patches. `patch_application.py` validates current source against recorded preimages, saves backups and records application receipts. `WORKTREE` snapshots include applied but uncommitted changes; a chosen Git commit still freezes that revision. These interface/application additions postdate the recorded thirty-task experiment; its results and hashes remain unchanged.
+
+No Java/Defects4J extension, no full-project correctness guarantee and no physical-Mac acceptance test. Generated test oracles can be wrong; inspect them before trusting a repair. First candidates were not identical in every experimental pair, so the observed difference is not a clean causal estimate of iteration alone. Local snapshots do not make host execution a security sandbox.
 
 ## For coding assistants
 

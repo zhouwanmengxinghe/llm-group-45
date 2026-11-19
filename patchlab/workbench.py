@@ -23,6 +23,10 @@ def _git(repo: Path, *args: str) -> str:
 
 
 def snapshot(repo: Path, revision: str, destination: Path) -> str:
+    if revision == "WORKTREE":
+        from .simple import copy_project
+        copy_project(repo.resolve(), destination)
+        return "WORKTREE"
     commit = _git(repo, "rev-parse", "--verify", "--end-of-options", revision + "^{commit}")
     with tempfile.TemporaryFile() as archive:
         subprocess.run(

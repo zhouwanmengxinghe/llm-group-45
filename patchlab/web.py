@@ -14,6 +14,7 @@ from .decision import ChatDecider
 from .experiment import Task, execute
 from .simple import execute_simple
 from .workbench import PytestRunner
+from .patch_application import application_info, apply_verified
 
 ROOT = Path(__file__).parent
 DATA = Path.cwd() / "runs" / "sessions"
@@ -29,6 +30,77 @@ class Workspace:
         self.data.mkdir(parents=True, exist_ok=True)
         self.lock = threading.RLock()
         self.active: set[str] = set()
+        self.pending: dict[str, dict] = {}
+        self.repositories: set[str] = set()
+
+    def approval(self, sid: str, run_id: str, diagnosis: str, patch: str, *, timeout=900) -> bool:
+        request_id = secrets.token_hex(16)
+        pending = {"id": request_id, "run_id": run_id, "diagnosis": diagnosis,
+                   "patch": patch, "expires": time.time() + timeout,
+                   "event": threading.Event(), "approved": None}
+        with self.lock:
+            self.pending[sid] = pending
+            self.emit(sid, "approval_requested", request_id=request_id, run_id=run_id,
+                      diagnosis=diagnosis, patch=patch, expires=pending["expires"])
+        try:
+            if not pending["event"].wait(timeout):
+                self.emit(sid, "approval_expired", request_id=request_id, run_id=run_id)
+                raise TimeoutError("Candidate approval expired. Start a new task to continue.")
+            return pending["approved"] is True
+        finally:
+            with self.lock:
+                if self.pending.get(sid) is pending:
+                    del self.pending[sid]
+
+    def pending_approval(self, sid: str) -> dict | None:
+        with self.lock:
+            pending = self.pending.get(sid)
+            return ({key: pending[key] for key in ("id", "run_id", "diagnosis", "patch", "expires")}
+                    if pending and pending["approved"] is None else None)
+
+    def decide_approval(self, sid: str, request_id: str, approved: bool):
+        self.path(sid)
+        if type(approved) is not bool:
+            raise ValueError("approved must be true or false")
+        with self.lock:
+            pending = self.pending.get(sid)
+            if (not pending or pending["id"] != request_id or pending["approved"] is not None
+                    or time.time() >= pending["expires"]):
+                raise ValueError("This approval request is no longer pending. Reload the page.")
+            pending["approved"] = approved
+            self.emit(sid, "approval_decided", request_id=request_id,
+                      run_id=pending["run_id"], approved=approved)
+            pending["event"].set()
+
+    def apply_patch(self, sid: str, run_id: str, patch_sha256: str) -> dict:
+        directory = self.path(sid)
+        if not isinstance(run_id, str) or len(run_id) != 16 or any(c not in '0123456789abcdef' for c in run_id):
+            raise ValueError("Invalid run id")
+        output = directory / "repairs" / run_id
+        info = application_info(output)
+        if info is None:
+            raise ValueError("This run has no patch available for application.")
+        repo_key = str(Path(info["repository"]).resolve()).casefold()
+        with self.lock:
+            if sid in self.active or repo_key in self.repositories:
+                raise ValueError("Wait for active tasks on this project before applying a patch.")
+            self.active.add(sid)
+            self.repositories.add(repo_key)
+        try:
+            result = apply_verified(output, patch_sha256)
+            self.emit(sid, "patch_applied", run_id=run_id, result=result)
+            self.emit(sid, "message", role="assistant", content=(
+                "Patch applied to " + result["repository"] + ". Files: " + ", ".join(result["files"]) +
+                ". Original files are backed up at " + result["backup"] +
+                ". Follow-up repairs can use WORKTREE to include these changes. No Git commit was created."))
+            return result
+        except Exception as exc:
+            self.emit(sid, "patch_application_failed", run_id=run_id, reason=str(exc))
+            raise
+        finally:
+            with self.lock:
+                self.active.discard(sid)
+                self.repositories.discard(repo_key)
 
     def path(self, sid: str) -> Path:
         if len(sid) != 32 or any(c not in '0123456789abcdef' for c in sid):
@@ -88,6 +160,7 @@ class Workspace:
 
     def start(self, sid: str, data: dict):
         self.path(sid)
+        repo_key = None
         with self.lock:
             if sid in self.active:
                 raise ValueError("This session is busy. Wait for the current task.")
@@ -109,6 +182,10 @@ class Workspace:
                 repo = data.get("repo", "")
                 if not isinstance(repo, str) or not Path(repo).is_dir():
                     raise ValueError("Enter a valid project directory.")
+                repo = str(Path(repo).resolve())
+                require_approval = data.get("require_approval", True)
+                if type(require_approval) is not bool:
+                    raise ValueError("require_approval must be true or false")
                 image = data.get("image", "").strip()
                 simple = data.get("repair_type", "professional") == "simple"
                 steps = data.get("steps", "")
@@ -117,11 +194,17 @@ class Workspace:
                 if not simple:
                     if not image and data.get("trusted") is not True:
                         raise ValueError("Specify a Docker image or confirm that this project is trusted for local test execution.")
-                    task = Task(Path(repo), data.get("revision", "HEAD") or "HEAD", content,
+                    task = Task(Path(repo), data.get("revision", "WORKTREE") or "WORKTREE", content,
                                 list_field("editable"), list_field("target"), list_field("suite"))
                     run_mode = data.get("mode", "feedback")
                     if run_mode not in ("single", "feedback", "memory"):
                         raise ValueError("Invalid repair mode")
+                with self.lock:
+                    key = repo.casefold()
+                    if key in self.repositories:
+                        raise ValueError("Another task is using this project. Wait for it to finish.")
+                    self.repositories.add(key)
+                    repo_key = key
             self.emit(sid, "message", role="user", content=content, action=mode)
             def worker():
                 try:
@@ -137,17 +220,19 @@ class Workspace:
                         run_id = secrets.token_hex(8)
                         self.emit(sid, "run_started", run_id=run_id)
                         sink = lambda event: self.emit(sid, "run_event", run_id=run_id, data=event)
+                        gate = (lambda diagnosis, patch: self.approval(sid, run_id, diagnosis, patch)) if require_approval else None
                         if simple:
                             result = execute_simple(Path(repo), content, steps, self.path(sid) / "repairs" / run_id,
                                                     model, PytestRunner(None, 90), session_context=conversation,
-                                                    event_sink=sink)
+                                                    event_sink=sink, approve=gate)
                         else:
                             result = execute(task, self.path(sid) / "repairs" / run_id, model,
                                              PytestRunner(image or None, 90), mode=run_mode,
-                                             session_context=conversation, event_sink=sink)
+                                             session_context=conversation, event_sink=sink, approve=gate)
                         patch_path = self.path(sid) / "repairs" / run_id / "final.patch"
                         patch = patch_path.read_text(encoding="utf-8") if patch_path.exists() else ""
-                        self.emit(sid, "run_result", run_id=run_id, result=result, patch=patch)
+                        self.emit(sid, "run_result", run_id=run_id, result=result, patch=patch,
+                                  application=application_info(patch_path.parent) if patch else None)
                         self.emit(sid, "message", role="assistant", content=(
                             f"Repair finished: {result['status']}. Effective candidates: {result['attempts']}."
                             + (f"\nDiagnosis: {result['diagnosis']}" if result.get('diagnosis') else "")
@@ -157,17 +242,18 @@ class Workspace:
                 finally:
                     with self.lock:
                         self.active.discard(sid)
+                        if repo_key:
+                            self.repositories.discard(repo_key)
             threading.Thread(target=worker, daemon=True).start()
         except Exception:
             with self.lock:
                 self.active.discard(sid)
+                if repo_key:
+                    self.repositories.discard(repo_key)
             raise
 
 
-def serve(config: Path | None, port: int = 8765, open_browser: bool = True):
-    workspace = Workspace(config)
-    token = secrets.token_urlsafe(32)
-
+def create_server(workspace: Workspace, token: str, port: int = 0):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
             pass
@@ -201,7 +287,8 @@ def serve(config: Path | None, port: int = 8765, open_browser: bool = True):
                     rows = workspace.records(sid)
                     with workspace.lock:
                         busy = sid in workspace.active
-                    self.send_json(200, {"records": rows, "busy": busy})
+                    self.send_json(200, {"records": rows, "busy": busy,
+                                         "pending_approval": workspace.pending_approval(sid)})
                 except ValueError as exc:
                     self.send_json(400, {"error": str(exc)})
             elif route == "/api/sessions" and self.authorized():
@@ -220,19 +307,37 @@ def serve(config: Path | None, port: int = 8765, open_browser: bool = True):
                 self.send_json(404, {"error": "Not found"})
 
         def do_POST(self):
-            if self.path != "/api/send" or not self.authorized():
+            route = urlsplit(self.path).path
+            if route not in {"/api/send", "/api/approval", "/api/apply"} or not self.authorized():
                 return self.send_json(403, {"error": "Forbidden"})
             try:
                 size = int(self.headers.get("Content-Length", "0"))
                 if not 0 < size <= 32768:
                     raise ValueError("Invalid request size")
                 data = json.loads(self.rfile.read(size))
-                workspace.start(data.get("session", ""), data)
-                self.send_json(202, {"ok": True})
+                if not isinstance(data, dict):
+                    raise ValueError("Expected a JSON object")
+                sid = data.get("session", "")
+                if route == "/api/approval":
+                    workspace.decide_approval(sid, data.get("request_id"), data.get("approved"))
+                    self.send_json(200, {"ok": True})
+                elif route == "/api/apply":
+                    if data.get("confirmed") is not True:
+                        raise ValueError("Explicit application confirmation is required.")
+                    self.send_json(200, workspace.apply_patch(sid, data.get("run_id"), data.get("patch_sha256")))
+                else:
+                    workspace.start(sid, data)
+                    self.send_json(202, {"ok": True})
             except (ValueError, KeyError, OSError, TypeError) as exc:
                 self.send_json(400, {"error": str(exc)})
 
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    return ThreadingHTTPServer(("127.0.0.1", port), Handler)
+
+
+def serve(config: Path | None, port: int = 8765, open_browser: bool = True):
+    workspace = Workspace(config)
+    token = secrets.token_urlsafe(32)
+    server = create_server(workspace, token, port)
     url = f"http://127.0.0.1:{server.server_port}/#{token}"
     print(f"PatchLab workspace: {url}", flush=True)
     if open_browser:

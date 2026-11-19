@@ -60,5 +60,57 @@
       "failure": "stagnated after three duplicates"
     },
     "example_summary_sha256": "d34c19a1add41296b5c3c5a074bc440506608701b55b4f165d6648022ee1481d"
+  },
+  "minimal_submission_check": {
+    "tests": {
+      "tests": 76,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "passed": 75,
+    "docker_integration": "both enabled and passed with the existing local image",
+    "skip": "Windows safe-symlink test: unavailable link-creation privilege",
+    "xml_sha256": "a219f8cccd48fa3d2d3d2e2a96a4cf5b92ec33592db7fffce567ef2e075eefe3",
+    "examples": {
+      "normal": "verified",
+      "changed_request": "verified",
+      "failure": "stagnated after three duplicates"
+    },
+    "example_policy": "scripted offline; real Git and pytest; zero paid model calls",
+    "removed": "report editing files, separate figure sources, handoff, historical QuixBugs task copies, duplicate offline traces and redundant exports"
+  },
+  "browser_approval_and_apply": {
+    "scope": "Browser candidate approval and explicit verified-patch application; postdates frozen validation30",
+    "passed": 86,
+    "skipped": 1,
+    "full_suite": {
+      "tests": 85,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "additional_tests": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "full_suite_xml_sha256": "1be370e5f4400b3b4f9f4bd814ca40641b012571a276497c68d224328f6c9d92",
+    "additional_xml_sha256": "114de9ac21ad596cfd4e38a031fd84b3a4ed7c7896d48af2b3383deb36ab0845",
+    "browser_smoke": {
+      "policy": "scripted model; no paid provider calls",
+      "workflow": "simple repair -> candidate approval -> real pytest -> explicit apply",
+      "result": "passed; application receipt and source/backup bytes verified",
+      "screenshot": "runs/web-approval/review-screen.jpg"
+    },
+    "source_sha256": {
+      "patchlab/web.py": "f4af64d59c6010c881d3df5102d5f41f9bbd5dd244eabb1f32b7da7919e8f628",
+      "patchlab/webui.html": "fffda3833b3fbec3082aad4bb64b070753f36d714a4121ac98a14e11b0d0eb24",
+      "patchlab/patch_application.py": "0d5204be2d9f1de08ff1b50278b0a9c145aebd46df4db46c22e4a6b76a546c98",
+      "patchlab/experiment.py": "9377921ee9ef04329cf2d18caa86d45dfbaf60ee58062d522832f4e17948a97b",
+      "patchlab/simple.py": "59a4f84b9873fd180ae24b62746872fb82c10ae4c823dd20f9d990f5ee55c7b9",
+      "patchlab/workbench.py": "9eb80fb9c62bc7d6417f8c4138d556967e239b57fa8c2ee479bc7779039f2765"
+    }
   }
 }

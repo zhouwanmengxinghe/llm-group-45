@@ -1,0 +1,45 @@
+{
+  "public_lock": "validation30-public-lock.json",
+  "initial10": [
+    "pytest-dev__pytest-5262",
+    "pytest-dev__pytest-6202",
+    "pytest-dev__pytest-7432",
+    "sympy__sympy-15017",
+    "sympy__sympy-15345",
+    "sympy__sympy-15809",
+    "sympy__sympy-16886",
+    "sympy__sympy-18763",
+    "sympy__sympy-19637",
+    "sympy__sympy-20916"
+  ],
+  "additional20": [
+    "django__django-10999",
+    "django__django-11099",
+    "django__django-11119",
+    "django__django-11133",
+    "django__django-11163",
+    "django__django-11880",
+    "django__django-12276",
+    "django__django-13023",
+    "django__django-14089",
+    "django__django-14373",
+    "django__django-11206",
+    "django__django-11848",
+    "django__django-13195",
+    "django__django-13670",
+    "django__django-14155",
+    "sympy__sympy-13031",
+    "sympy__sympy-13647",
+    "sympy__sympy-14531",
+    "sympy__sympy-19346",
+    "sympy__sympy-20154"
+  ],
+  "additional20_difficulty": {
+    "<15 min fix": 10,
+    "15 min - 1 hour": 10
+  },
+  "environment_accepted": false,
+  "model_runs_for_new20_started": false,
+  "validation_status": "New20 accepted; pilot10 requires uniform updated-controller rerun and protocol review before claiming new30 results",
+  "additional20_environment_accepted": true
+}

@@ -1,0 +1,116 @@
+{
+  "working_tree": {
+    "tests": 76,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 3,
+    "xml_sha256": "510fb3f43a161503083c6fcb46ff9291fa6a6540d18530bcb4698aee755025e5"
+  },
+  "source_snapshot": {
+    "tests": 76,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 3,
+    "xml_sha256": "ebf796d234fa67da2e7214708f84c29cfa44e69610ac1faf4c346a3701e77bfd"
+  },
+  "docker_integration": {
+    "tests": 2,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "xml_sha256": "1f26dc07c8db50c92856146863a6876f98092e3122723bda7c35234d1242c5ab"
+  },
+  "ui": {
+    "html_language": "en",
+    "javascript_syntax": "passed node --check",
+    "visual_browser_check": "not completed: in-app browser timed out connecting to the local service"
+  },
+  "examples": {
+    "normal": "verified with live provider",
+    "changed_request": "verified with live provider",
+    "failure": "stagnated after three duplicates; scripted model and real pytest"
+  },
+  "report": "English final report translated from the saved Chinese Word master; all eight rendered pages visually inspected; two English figures",
+  "final_submission_check": {
+    "date": "2026-11-19",
+    "source": "independent submission directory using selected release files",
+    "non_docker_passed": 73,
+    "docker_passed": 2,
+    "conditional_skips": 1,
+    "skip_reason": "Windows repository-symlink test requires unavailable link-creation privilege",
+    "initial_suite": {
+      "tests": 76,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 1
+    },
+    "initial_suite_xml_sha256": "8eb6accdae68207ad806b6e09332386fbc85ba12d776c8fe80b60e90349e2e2b",
+    "initial_failures": "Both Docker tests could not access the Docker Desktop named pipe inside the command sandbox; no behavioral failure inferred",
+    "docker_host_rerun": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "docker_xml_sha256": "26b8e530a660a2bd640301d37789aa16fd4f55aa3730890020c5756f242ab677",
+    "examples": {
+      "policy": "scripted offline; real Git and pytest; no paid API calls",
+      "normal": "verified",
+      "changed_request": "verified",
+      "failure": "stagnated after three duplicates"
+    },
+    "example_summary_sha256": "d34c19a1add41296b5c3c5a074bc440506608701b55b4f165d6648022ee1481d"
+  },
+  "minimal_submission_check": {
+    "tests": {
+      "tests": 76,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "passed": 75,
+    "docker_integration": "both enabled and passed with the existing local image",
+    "skip": "Windows safe-symlink test: unavailable link-creation privilege",
+    "xml_sha256": "a219f8cccd48fa3d2d3d2e2a96a4cf5b92ec33592db7fffce567ef2e075eefe3",
+    "examples": {
+      "normal": "verified",
+      "changed_request": "verified",
+      "failure": "stagnated after three duplicates"
+    },
+    "example_policy": "scripted offline; real Git and pytest; zero paid model calls",
+    "removed": "report editing files, separate figure sources, handoff, historical QuixBugs task copies, duplicate offline traces and redundant exports"
+  },
+  "browser_approval_and_apply": {
+    "scope": "Browser candidate approval and explicit verified-patch application; postdates frozen validation30",
+    "passed": 86,
+    "skipped": 1,
+    "full_suite": {
+      "tests": 85,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "additional_tests": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "full_suite_xml_sha256": "1be370e5f4400b3b4f9f4bd814ca40641b012571a276497c68d224328f6c9d92",
+    "additional_xml_sha256": "114de9ac21ad596cfd4e38a031fd84b3a4ed7c7896d48af2b3383deb36ab0845",
+    "browser_smoke": {
+      "policy": "scripted model; no paid provider calls",
+      "workflow": "simple repair -> candidate approval -> real pytest -> explicit apply",
+      "result": "passed; application receipt and source/backup bytes verified",
+      "screenshot": "runs/web-approval/review-screen.jpg"
+    },
+    "source_sha256": {
+      "patchlab/web.py": "f4af64d59c6010c881d3df5102d5f41f9bbd5dd244eabb1f32b7da7919e8f628",
+      "patchlab/webui.html": "fffda3833b3fbec3082aad4bb64b070753f36d714a4121ac98a14e11b0d0eb24",
+      "patchlab/patch_application.py": "0d5204be2d9f1de08ff1b50278b0a9c145aebd46df4db46c22e4a6b76a546c98",
+      "patchlab/experiment.py": "9377921ee9ef04329cf2d18caa86d45dfbaf60ee58062d522832f4e17948a97b",
+      "patchlab/simple.py": "59a4f84b9873fd180ae24b62746872fb82c10ae4c823dd20f9d990f5ee55c7b9",
+      "patchlab/workbench.py": "9eb80fb9c62bc7d6417f8c4138d556967e239b57fa8c2ee479bc7779039f2765"
+    }
+  }
+}

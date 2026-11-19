@@ -1,0 +1,298 @@
+"""Frozen repository snapshots, bounded inspection, and test execution."""
+
+from __future__ import annotations
+
+import difflib
+import os
+from pathlib import Path, PurePosixPath
+import posixpath
+import re
+import shutil
+import subprocess
+import tarfile
+import tempfile
+import time
+from threading import Thread
+from uuid import uuid4
+
+
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.check_output(
+        ["git", "-C", str(repo), *args], text=True, encoding="utf-8", timeout=60
+    ).strip()
+
+
+def snapshot(repo: Path, revision: str, destination: Path) -> str:
+    if revision == "WORKTREE":
+        from .simple import copy_project
+        copy_project(repo.resolve(), destination)
+        return "WORKTREE"
+    commit = _git(repo, "rev-parse", "--verify", "--end-of-options", revision + "^{commit}")
+    with tempfile.TemporaryFile() as archive:
+        subprocess.run(
+            ["git", "-C", str(repo), "-c", "core.autocrlf=false", "-c", "core.eol=lf",
+             "archive", "--format=tar", commit],
+            stdout=archive, check=True, timeout=90,
+        )
+        archive.seek(0)
+        with tarfile.open(fileobj=archive) as stream:
+            for member in stream:
+                member_path = PurePosixPath(member.name)
+                if any(p.casefold() == ".git" for p in member_path.parts):
+                    raise ValueError("Unexpected Git metadata in the snapshot.")
+                if member.issym():
+                    target = PurePosixPath(member.linkname)
+                    resolved = PurePosixPath(posixpath.normpath(str(member_path.parent / target)))
+                    if (
+                        target.is_absolute()
+                        or ".." in resolved.parts
+                        or any(p.casefold() == ".git" for p in resolved.parts)
+                    ):
+                        raise ValueError("Snapshot symlink must stay inside the repository.")
+                elif not (member.isfile() or member.isdir()):
+                    raise ValueError("Snapshot contains an unsupported special file.")
+                stream.extract(member, destination, filter="data")
+    return commit
+
+
+class Workbench:
+    def __init__(self, root: Path, editable: list[str]):
+        self.root = root
+        self.sources = frozenset(
+            p.relative_to(root).as_posix() for p in root.rglob("*.py") if p.is_file()
+        )
+        self.editable = frozenset(editable)
+        for name in editable:
+            parts = PurePosixPath(name.lower()).parts
+            if (
+                name not in self.sources
+                or not re.fullmatch(r"[A-Za-z0-9_./-]+", name)
+                or any(p.startswith(".") or p in {"test", "tests", "testing", "fixtures"} for p in parts[:-1])
+                or parts[-1] in {"conftest.py", "tests.py"}
+                or parts[-1].startswith("test_")
+                or parts[-1].endswith("_test.py")
+            ):
+                raise ValueError(f"Editable path is not an eligible Python source file: {name}")
+        if not self.editable:
+            raise ValueError("At least one editable Python source file is required.")
+
+    def inspect(self, action: dict) -> dict:
+        operation = action.get("kind")
+        if operation == "files":
+            prefix = action.get("prefix", "")
+            if not isinstance(prefix, str):
+                raise ValueError("prefix must be a string")
+            return {"paths": [p for p in sorted(self.sources) if p.startswith(prefix)][:100]}
+        if operation == "search":
+            query = action.get("text")
+            prefix = action.get("prefix", "")
+            if not isinstance(prefix, str):
+                raise ValueError("search prefix must be a string")
+            if not isinstance(query, str) or not 1 <= len(query) <= 160:
+                raise ValueError("search needs a literal query of 1–160 characters")
+            hits = []
+            for name in sorted(self.sources, key=lambda p: (p not in self.editable, p)):
+                if not name.startswith(prefix):
+                    continue
+                path = self.root / name
+                if path.stat().st_size > 256_000:
+                    continue
+                for n, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                    if query in line:
+                        hits.append({"path": name, "line": n, "text": line[:240]})
+                        if len(hits) == 35:
+                            return {"hits": hits}
+            return {"hits": hits}
+        if operation == "read":
+            name, start, end = action.get("path"), action.get("start"), action.get("end")
+            if not isinstance(name, str) or name not in self.sources:
+                raise ValueError("read requires a listed Python path")
+            if type(start) is not int or type(end) is not int or not 1 <= start <= end:
+                raise ValueError("read requires positive 1-based start and end, with start <= end")
+            requested_end = end
+            end = min(end, start + 79)
+            path = self.root / name
+            if path.stat().st_size > 256_000:
+                raise ValueError("file exceeds the inspection limit")
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+            response = {"path": name, "start": start, "end": min(end, len(lines)),
+                        "text": "\n".join(lines[start - 1 : end])[:8000]}
+            if requested_end > end:
+                response["range_capped"] = True
+                response["next_start"] = end + 1
+            return response
+        raise ValueError("unknown inspection operation")
+
+    def prepare(self, edits: object) -> tuple[str, dict[str, str]]:
+        if not isinstance(edits, list) or not 1 <= len(edits) <= 8:
+            raise ValueError("a candidate needs one to eight edits")
+        changes: dict[str, str] = {}
+        originals: dict[str, str] = {}
+        for edit in edits:
+            if not isinstance(edit, dict):
+                raise ValueError("invalid edit")
+            name, old, new = (edit.get(k) for k in ("path", "before", "after"))
+            if not isinstance(name, str) or name not in self.editable:
+                raise ValueError(f"edit is outside the approved source list: {name}")
+            if not isinstance(old, str) or not isinstance(new, str) or not old or old == new:
+                raise ValueError("an edit needs distinct before/after text")
+            if max(len(old), len(new)) > 6000 or any(c in old + new for c in "\r\x00"):
+                raise ValueError("edit must be bounded plain text with LF line endings")
+            if name not in originals:
+                raw = (self.root / name).read_bytes()
+                if len(raw) > 256_000 or b"\r" in raw or not raw.endswith(b"\n"):
+                    raise ValueError("editable files must be small UTF-8 files with LF and a final newline")
+                originals[name] = raw.decode("utf-8")
+            current = changes.get(name, originals[name])
+            if current.count(old) != 1:
+                anchor = next((line.strip() for line in old.splitlines() if line.strip()), "")
+                lines = current.splitlines()
+                matches = [i for i, line in enumerate(lines) if anchor and line.strip() == anchor]
+                if not matches and anchor:
+                    ranked = sorted(((difflib.SequenceMatcher(None, anchor, line.strip()).ratio(), i)
+                                     for i, line in enumerate(lines)), reverse=True)
+                    matches = [i for score, i in ranked[:2] if score >= .65]
+                snippets = [f"lines {max(0, i-2)+1}-{min(len(lines), i+8)}:\n" +
+                            "\n".join(lines[max(0, i-2):i+8]) for i in matches[:2]]
+                raise ValueError(f"before text must occur exactly once: {name}; found {current.count(old)}. "
+                                 "Copy a unique anchor from the original unchanged source.\n" +
+                                 "\n".join(snippets)[:1800])
+            changes[name] = current.replace(old, new, 1)
+        parts = []
+        for name, updated in sorted(changes.items()):
+            if updated == originals[name]:
+                continue
+            if not updated.endswith("\n"):
+                raise ValueError("source edits must preserve the final newline")
+            compile(updated, name, "exec")
+            parts.extend(difflib.unified_diff(
+                [line + "\n" for line in originals[name].split("\n")[:-1]],
+                [line + "\n" for line in updated.split("\n")[:-1]],
+                fromfile=f"a/{name}", tofile=f"b/{name}",
+            ))
+        if not parts:
+            raise ValueError("edits produce an empty patch")
+        return "".join(parts), changes
+
+    def stage(self, candidate: Path, changes: dict[str, str]) -> None:
+        shutil.copytree(self.root, candidate)
+        for name, updated in changes.items():
+            (candidate / name).write_bytes(updated.encode("utf-8"))
+
+
+class PytestRunner:
+    def __init__(
+        self, image: str | None, timeout: int, python_executable: str = "python",
+        test_program: list[str] | None = None, test_suffix: list[str] | None = None,
+    ):
+        if not isinstance(python_executable, str) or not re.fullmatch(r"(?:python|/[A-Za-z0-9_./-]+)", python_executable):
+            raise ValueError("container Python must be 'python' or a safe absolute path")
+        if image is None and python_executable != "python":
+            raise ValueError("a custom Python executable is only valid for a container image")
+        def valid_arguments(tokens: list[str] | None, *, allow_empty: bool) -> bool:
+            return tokens is None or (
+                (allow_empty or bool(tokens))
+                and all(
+                isinstance(token, str)
+                and re.fullmatch(r"[A-Za-z0-9_./=:+-]+", token)
+                and ".." not in PurePosixPath(token).parts
+                    for token in tokens
+                )
+            )
+        if not valid_arguments(test_program, allow_empty=False) or not valid_arguments(test_suffix, allow_empty=True):
+            raise ValueError("test program must contain bounded command arguments without shell syntax")
+        self.image = image
+        self.timeout = timeout
+        self.python_executable = python_executable
+        self.test_program = list(test_program) if test_program else None
+        self.test_suffix = list(test_suffix) if test_suffix else []
+
+    def validate_selectors(self, root: Path, selectors: list[str]) -> None:
+        """Validate pytest paths or bounded labels used by a custom test program."""
+        frozen = root.resolve()
+        for selector in selectors:
+            name = selector.split("::", 1)[0]
+            if (
+                not name
+                or name.startswith("-")
+                or not re.fullmatch(r"[A-Za-z0-9_./:+-]+", selector)
+                or ".." in PurePosixPath(name).parts
+            ):
+                raise ValueError(f"invalid test selector: {selector}")
+            if self.test_program and "/" not in name and not name.endswith(".py"):
+                if not re.fullmatch(r"[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*", name):
+                    raise ValueError(f"invalid custom test label: {selector}")
+                continue
+            selected = (root / name).resolve()
+            if not selected.is_relative_to(frozen) or not selected.exists():
+                raise ValueError(f"invalid test selector: {selector}")
+
+    def run(self, root: Path, selectors: list[str]) -> dict:
+        import sys
+
+        base = (
+            [*self.test_program, *selectors, *self.test_suffix]
+            if self.test_program else
+            ["-B", "-m", "pytest", "-q", "-p", "no:cacheprovider", *self.test_suffix, "--", *selectors]
+        )
+        container = "patchlab-" + uuid4().hex
+        if self.image:
+            command = [
+                "docker", "run", "--rm", "--name", container, "--pull", "never",
+                "--network", "none", "--read-only", "--cap-drop", "ALL",
+                "--security-opt", "no-new-privileges", "--memory", "1g", "--cpus", "1",
+                "--pids-limit", "128", "--tmpfs", "/tmp:rw,nosuid,nodev,size=128m",
+                "--mount", f"type=bind,source={root},target=/repo,readonly",
+                "--workdir", "/repo", "--env", "HOME=/tmp",
+                "--env", "PYTHONPATH=/repo/src:/repo",
+                "--env", "HYPOTHESIS_STORAGE_DIRECTORY=/tmp/patchlab-hypothesis",
+                "--entrypoint", self.python_executable, self.image, *base,
+            ]
+            env = os.environ.copy()
+        else:
+            command = [sys.executable, *base]
+            env = {k: v for k, v in os.environ.items() if k.upper() in {
+                "PATH", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "TEMP", "TMP", "LANG",
+            }}
+            env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
+            env["PYTHONPATH"] = os.pathsep.join((str(root.resolve() / "src"), str(root.resolve())))
+        start = time.monotonic()
+        with subprocess.Popen(
+            command, cwd=root, env=env, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0,
+        ) as process:
+            tail = bytearray()
+
+            def drain():
+                assert process.stdout is not None
+                try:
+                    while data := process.stdout.read(4096):
+                        tail.extend(data)
+                        if len(tail) > 12000:
+                            del tail[:-12000]
+                except OSError:
+                    pass
+
+            reader = Thread(target=drain, daemon=True)
+            reader.start()
+            timed_out = False
+            try:
+                process.wait(timeout=self.timeout)
+            except subprocess.TimeoutExpired:
+                timed_out = True
+                process.kill()
+                process.wait()
+            if self.image and timed_out:
+                try:
+                    subprocess.run(
+                        ["docker", "rm", "-f", container], stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL, timeout=10,
+                    )
+                except subprocess.TimeoutExpired:
+                    pass
+            reader.join(timeout=2)
+            return {
+                "exit_code": process.returncode, "timed_out": timed_out,
+                "seconds": round(time.monotonic() - start, 3),
+                "output": tail.decode("utf-8", errors="replace"),
+            }

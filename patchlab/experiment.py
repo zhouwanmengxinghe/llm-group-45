@@ -16,6 +16,7 @@ from .resilience import retry
 from .memory import compact_evidence
 from .diagnostics import excerpt
 from .repair_memory import RepairMemory
+from .patch_application import save_application
 from .reproducer import (FILENAME as REPRODUCER_FILE, validate as validate_reproducer,
                          is_configuration_failure, has_behavioral_failure)
 from .reproducer import healthy_control_passed
@@ -331,6 +332,8 @@ def execute(
                             public_ok = regression and not regression["timed_out"] and regression["exit_code"] == 0
                             contract_ok = focused is None or (not focused["timed_out"] and focused["exit_code"] == 0)
                             if public_ok and (not task.external_evaluation or contract_ok or (mode == "single" and not require_reproducer)):
+                                if not task.external_evaluation:
+                                    save_application(output, task.repository, frozen, changes, patch)
                                 (output / "final.patch").write_bytes(patch.encode())
                                 if task.external_evaluation:
                                     result.update(

@@ -14,6 +14,7 @@ from typing import Callable
 from .workbench import Workbench, PytestRunner
 from .resilience import retry
 from .memory import compact_evidence
+from .patch_application import save_application
 
 
 EXCLUDE = {".git", ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache", "runs", "dist", "build"}
@@ -65,14 +66,15 @@ def valid_reproducer(code: object) -> str:
 
 def execute_simple(repo: Path, issue: str, steps: str, output: Path, model, runner: PytestRunner,
                    *, session_context: str = "", event_sink: Callable[[dict], None] | None = None,
-                   calls: int = 20) -> dict:
+                   calls: int = 20, approve: Callable[[str, str], bool] | None = None) -> dict:
     output = output.resolve()
     if output.is_relative_to(repo.resolve()):
         raise ValueError("The result directory must be outside the target project.")
     output.mkdir(parents=True, exist_ok=False)
     start = time.monotonic()
     result = {"status": "execution_error", "mode": "simple", "model": model.model,
-              "attempts": 0, "model_calls": 0, "verified_candidates": 0}
+              "attempts": 0, "model_calls": 0, "verified_candidates": 0,
+              "approval_enabled": approve is not None}
     with (output / "events.jsonl").open("w", encoding="utf-8") as log:
         def record(event, **details):
             entry = {"event": event, "at_seconds": round(time.monotonic() - start, 3), **details}
@@ -147,6 +149,13 @@ def execute_simple(repo: Path, issue: str, steps: str, output: Path, model, runn
                         try:
                             patch, changes = bench.prepare(action.get("edits"))
                             (output / f"candidate-{number}.patch").write_bytes(patch.encode())
+                            if approve is not None and not approve(str(action.get("diagnosis", "")), patch):
+                                feedback.append({"stage": "approval", "error": "Reviewer rejected the candidate. Propose a different justified edit or stop."})
+                                record("candidate_rejected", attempt=number, failure="Reviewer rejected the candidate.")
+                                if number >= 5:
+                                    result["status"] = "proposal_limit"
+                                    break
+                                continue
                             candidate = area / f"candidate-{number}"
                             bench.stage(candidate, changes)
                             filename = "test_patchlab_generated_reproducer.py"
@@ -162,6 +171,7 @@ def execute_simple(repo: Path, issue: str, steps: str, output: Path, model, runn
                                 regression = runner.run(candidate, sorted(existing_tests))
                                 record("candidate_regression", attempt=number, **regression)
                             if focused["exit_code"] == 0 and not focused["timed_out"] and (regression is None or (regression["exit_code"] == 0 and not regression["timed_out"])):
+                                save_application(output, repo, frozen, changes, patch)
                                 (output / "final.patch").write_bytes(patch.encode())
                                 result.update(status="verified" if regression else "reproducer_passed_no_regression",
                                               diagnosis=str(action.get("diagnosis", ""))[:2000],

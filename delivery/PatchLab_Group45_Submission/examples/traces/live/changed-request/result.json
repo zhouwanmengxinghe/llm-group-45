@@ -1,0 +1,68 @@
+{
+  "status": "verified",
+  "mode": "memory",
+  "model": "deepseek-flash",
+  "attempts": 1,
+  "verified_candidates": 1,
+  "model_calls": 3,
+  "inspection_calls": 2,
+  "tokens_reported": 1885,
+  "calls_with_usage": 3,
+  "provider_requests": 3,
+  "provider_responses_with_usage": 3,
+  "provider_tokens_reported": 1885,
+  "provider_usage_complete": true,
+  "provider_requests_by_purpose": {
+    "decision": 3
+  },
+  "call_limit": 10,
+  "attempt_limit": 5,
+  "completion_limit": 1200,
+  "test_timeout": 30,
+  "approval_enabled": false,
+  "target": [
+    "test_interval.py::test_positive"
+  ],
+  "suite": [
+    "test_interval.py"
+  ],
+  "container_image": null,
+  "container_python": "python",
+  "test_program": null,
+  "test_suffix": [],
+  "external_evaluation": null,
+  "guided": true,
+  "issue_reproducer_enabled": false,
+  "issue_reproducer_required": false,
+  "reproducer_attempts": 0,
+  "reproducer_confirmed": false,
+  "revision": "7c38a50c4bc937a5e66f3730067a6ba9d13eded9",
+  "initial_target": {
+    "exit_code": 1,
+    "timed_out": false,
+    "seconds": 1.341,
+    "output": "F                                                                        [100%]\r\n================================== FAILURES ===================================\r\n________________________________ test_positive ________________________________\r\n\r\n    def test_positive():\r\n>       assert duration(0, 120) == 2\r\nE       assert 120 == 2\r\nE        +  where 120 = duration(0, 120)\r\n\r\ntest_interval.py:7: AssertionError\r\n=========================== short test summary info ===========================\r\nFAILED test_interval.py::test_positive - assert 120 == 2\r\n1 failed in 0.41s\r\n"
+  },
+  "duplicate_proposals": 0,
+  "diagnosis": "duration returns raw seconds; requirement is fractional minutes, with reversed intervals clamped to zero.",
+  "target_result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.995,
+    "output": ".                                                                        [100%]\r\n1 passed in 0.02s\r\n"
+  },
+  "regression_result": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.912,
+    "output": "...                                                                      [100%]\r\n3 passed in 0.01s\r\n"
+  },
+  "recovered_after_semantic_failure": false,
+  "provider_response_models": [
+    "deepseek-flash"
+  ],
+  "effective_response_models": [
+    "deepseek-flash"
+  ],
+  "elapsed_seconds": 5.763
+}

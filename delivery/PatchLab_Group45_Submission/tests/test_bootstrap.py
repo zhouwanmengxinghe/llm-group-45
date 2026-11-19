@@ -1,0 +1,147 @@
+import os
+from pathlib import Path
+
+import bootstrap
+
+
+def test_first_setup_and_saved_key(tmp_path, monkeypatch):
+    config = tmp_path / "model.toml"
+    secret = tmp_path / "key"
+    monkeypatch.setattr(bootstrap, "CONFIG", config)
+    monkeypatch.setattr(bootstrap, "SECRET", secret)
+    monkeypatch.setattr(bootstrap.sys, "platform", "win32")
+    monkeypatch.delenv("PATCHLAB_API_KEY", raising=False)
+    answers = iter(["2", "https://example.test/v1/chat/completions", "test-model", ""])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    monkeypatch.setattr(bootstrap.getpass, "getpass", lambda _: "a-secret")
+    monkeypatch.setattr(bootstrap, "protect", lambda key: "encrypted-value")
+    bootstrap.configure()
+    assert "test-model" in config.read_text(encoding="utf-8")
+    assert "a-secret" not in config.read_text(encoding="utf-8")
+    assert secret.read_text(encoding="utf-8") == "encrypted-value"
+    assert os.environ["PATCHLAB_API_KEY"] == "a-secret"
+
+
+def test_default_deepseek_needs_only_key(tmp_path, monkeypatch):
+    config = tmp_path / "model.toml"
+    monkeypatch.setattr(bootstrap, "CONFIG", config)
+    monkeypatch.setattr(bootstrap, "SECRET", tmp_path / "key")
+    monkeypatch.setattr(bootstrap.sys, "platform", "win32")
+    monkeypatch.delenv("PATCHLAB_API_KEY", raising=False)
+    answers = iter(["", "n"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    monkeypatch.setattr(bootstrap.getpass, "getpass", lambda _: "test-key")
+    bootstrap.configure()
+    import tomllib
+    settings = tomllib.loads(config.read_text(encoding="utf-8"))["model"]
+    assert settings["url"] == "https://api.deepseek.com/chat/completions"
+    assert settings["name"] == "deepseek-flash"
+    assert settings["thinking"] == "disabled"
+    assert os.environ["PATCHLAB_API_KEY"] == "test-key"
+
+
+def test_existing_config_and_environment_are_preserved(tmp_path, monkeypatch):
+    config = tmp_path / "model.toml"
+    content = '[model]\nurl="https://example.test/chat"\nname="custom"\n'
+    config.write_text(content, encoding="utf-8")
+    monkeypatch.setattr(bootstrap, "CONFIG", config)
+    monkeypatch.setattr(bootstrap, "SECRET", tmp_path / "missing")
+    monkeypatch.setenv("PATCHLAB_API_KEY", "already-set")
+    monkeypatch.setattr("builtins.input", lambda _: (_ for _ in ()).throw(AssertionError("unexpected prompt")))
+    bootstrap.configure()
+    assert config.read_text(encoding="utf-8") == content
+    assert os.environ["PATCHLAB_API_KEY"] == "already-set"
+
+
+def test_launcher_starts_web_with_config_and_inherits_environment(tmp_path, monkeypatch):
+    config = tmp_path / "model.toml"
+    config.write_text('[model]\nurl="https://example.test/chat"\nname="m"\n', encoding="utf-8")
+    monkeypatch.setattr(bootstrap, "CONFIG", config)
+    monkeypatch.setattr(bootstrap, "ensure_environment", lambda: None)
+    monkeypatch.setattr(bootstrap, "configure", lambda: None)
+    monkeypatch.setattr(bootstrap.shutil, "which", lambda _: "git")
+    monkeypatch.setattr(bootstrap.sys, "argv", ["bootstrap.py", "--no-browser", "--port", "9876"])
+    monkeypatch.setenv("PATCHLAB_TEST_INHERIT", "preserved")
+    original_env = dict(os.environ)
+    seen = {}
+    def start(command, **kwargs):
+        seen.update(command=command, env=kwargs["env"])
+        return 0
+    monkeypatch.setattr(bootstrap.subprocess, "call", start)
+    assert bootstrap.main() == 0
+    assert seen["command"][1:4] == ["-m", "patchlab", "web"]
+    assert str(config) in seen["command"] and "9876" in seen["command"]
+    assert seen["env"] == original_env
+
+
+def test_dependency_install_inherits_environment(tmp_path, monkeypatch):
+    python = tmp_path / "python.exe"
+    python.touch()
+    monkeypatch.setattr(bootstrap, "PYTHON", python)
+    calls = []
+    class Result:
+        def __init__(self, code): self.returncode = code
+    def run(args, **kwargs):
+        calls.append((args, kwargs))
+        return Result(1 if len(calls) == 2 else 0)
+    monkeypatch.setattr(bootstrap.subprocess, "run", run)
+    bootstrap.ensure_environment()
+    assert calls[-1][0][1:4] == ["-m", "pip", "install"]
+    assert "env" not in calls[-1][1]
+
+
+def test_macos_key_is_session_only_and_windows_secret_is_ignored(tmp_path, monkeypatch):
+    config = tmp_path / "model.toml"
+    config.write_text('[model]\nurl="https://example.test/chat"\nname="m"\n', encoding="utf-8")
+    secret = tmp_path / "key"
+    secret.write_text("windows-encrypted-value", encoding="utf-8")
+    monkeypatch.setattr(bootstrap, "CONFIG", config)
+    monkeypatch.setattr(bootstrap, "SECRET", secret)
+    monkeypatch.setattr(bootstrap, "MAC_SECRET", tmp_path / "mac-keys.json")
+    monkeypatch.setattr(bootstrap.sys, "platform", "darwin")
+    monkeypatch.delenv("PATCHLAB_API_KEY", raising=False)
+    monkeypatch.setattr(bootstrap.getpass, "getpass", lambda _: "mac-session-key")
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+    monkeypatch.setattr(bootstrap, "unprotect", lambda _: (_ for _ in ()).throw(AssertionError("Windows secret used")))
+    bootstrap.configure()
+    assert os.environ["PATCHLAB_API_KEY"] == "mac-session-key"
+    assert secret.read_text(encoding="utf-8") == "windows-encrypted-value"
+    assert not bootstrap.MAC_SECRET.exists()
+
+
+def test_macos_can_save_and_reload_key(tmp_path, monkeypatch):
+    config = tmp_path / "model.toml"
+    config.write_text('[model]\nurl="https://example.test/chat"\nname="m"\n', encoding="utf-8")
+    local_keys = tmp_path / "mac-keys.json"
+    monkeypatch.setattr(bootstrap, "CONFIG", config)
+    monkeypatch.setattr(bootstrap, "MAC_SECRET", local_keys)
+    monkeypatch.setattr(bootstrap.sys, "platform", "darwin")
+    monkeypatch.delenv("PATCHLAB_API_KEY", raising=False)
+    monkeypatch.setattr(bootstrap.getpass, "getpass", lambda _: "saved-test-key")
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+    bootstrap.configure()
+    assert bootstrap.read_mac_keys()["PATCHLAB_API_KEY"] == "saved-test-key"
+    monkeypatch.delenv("PATCHLAB_API_KEY")
+    monkeypatch.setattr(bootstrap.getpass, "getpass", lambda _: (_ for _ in ()).throw(AssertionError("unexpected prompt")))
+    bootstrap.configure()
+    assert os.environ["PATCHLAB_API_KEY"] == "saved-test-key"
+
+
+def test_macos_launcher_uses_unix_venv_and_config(tmp_path, monkeypatch):
+    config = tmp_path / "model.toml"
+    config.write_text('[model]\nurl="https://example.test/chat"\nname="m"\n', encoding="utf-8")
+    monkeypatch.setattr(bootstrap, "CONFIG", config)
+    monkeypatch.setattr(bootstrap, "PYTHON", tmp_path / ".venv" / "bin" / "python")
+    monkeypatch.setattr(bootstrap.sys, "platform", "darwin")
+    monkeypatch.setattr(bootstrap.sys, "argv", ["bootstrap.py", "--no-browser"])
+    monkeypatch.setattr(bootstrap, "ensure_environment", lambda: None)
+    monkeypatch.setattr(bootstrap, "configure", lambda: None)
+    monkeypatch.setattr(bootstrap.shutil, "which", lambda _: "git")
+    seen = {}
+    def start(command, **kwargs):
+        seen["command"] = command
+        return 0
+    monkeypatch.setattr(bootstrap.subprocess, "call", start)
+    assert bootstrap.main() == 0
+    assert seen["command"][0] == str(tmp_path / ".venv" / "bin" / "python")
+    assert str(config) in seen["command"]
