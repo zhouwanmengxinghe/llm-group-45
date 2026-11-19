@@ -40,10 +40,10 @@ def test_does_not_claim_success_without_reproduction(tmp_path):
     class NoRepro:
         model = "fake"
         def decide(self, context):
-            return {"kind": "stop", "reason": "请提供操作步骤"}, None
-    result = execute_simple(repo, "有问题", "", tmp_path / "out", NoRepro(), PytestRunner(None, 10))
+            return {"kind": "stop", "reason": "Please provide reproduction steps"}, None
+    result = execute_simple(repo, "There is a problem", "", tmp_path / "out", NoRepro(), PytestRunner(None, 10))
     assert result["status"] == "needs_information"
-    assert "步骤" in result["reason"]
+    assert "steps" in result["reason"]
     assert not (tmp_path / "out" / "final.patch").exists()
 
 

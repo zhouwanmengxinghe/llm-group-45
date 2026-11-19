@@ -1,0 +1,108 @@
+{
+  "scope": "Historical forty-task development tests; not a controlled before-after comparison with validation30",
+  "tasks": 40,
+  "repository_count": 11,
+  "resolved": {
+    "single": 19,
+    "feedback": 15,
+    "memory": 17
+  },
+  "resolved_rate": {
+    "single": 0.475,
+    "feedback": 0.375,
+    "memory": 0.425
+  },
+  "supplemental20_diagnostics": {
+    "single": {
+      "decision_limit": 2,
+      "public_pass": 15,
+      "resolved": 9,
+      "repeated_inspection": 22
+    },
+    "feedback": {
+      "decision_limit": 9,
+      "public_pass": 10,
+      "resolved": 7,
+      "repeated_inspection": 57
+    },
+    "memory": {
+      "decision_limit": 9,
+      "public_pass": 11,
+      "resolved": 7,
+      "repeated_inspection": 55
+    }
+  },
+  "retest_sources": [
+    "benchmarks/guided-ablation-results.json",
+    "benchmarks/guided20-results.json"
+  ],
+  "source_report_sha256": "ad0956b7b84986e50f8f9b107877ddc1d0e4242ec1d5ba29654a9d087858f0dc",
+  "guided20_summary": {
+    "single": {
+      "before": {
+        "unresolved": 6,
+        "resolved": 9,
+        "empty_patch": 5
+      },
+      "after": {
+        "empty_patch": 5,
+        "resolved": 10,
+        "unresolved": 5
+      },
+      "gained": 2,
+      "lost": 1,
+      "after_calls": 123,
+      "before_calls": 145
+    },
+    "feedback": {
+      "before": {
+        "unresolved": 3,
+        "resolved": 7,
+        "empty_patch": 10
+      },
+      "after": {
+        "unresolved": 7,
+        "resolved": 10,
+        "scoring_error": 1,
+        "empty_patch": 2
+      },
+      "gained": 3,
+      "lost": 0,
+      "after_calls": 153,
+      "before_calls": 216
+    },
+    "memory": {
+      "before": {
+        "unresolved": 4,
+        "resolved": 7,
+        "empty_patch": 9
+      },
+      "after": {
+        "unresolved": 7,
+        "resolved": 10,
+        "empty_patch": 3
+      },
+      "gained": 3,
+      "lost": 0,
+      "after_calls": 158,
+      "before_calls": 213
+    }
+  },
+  "targeted_three_retest": {
+    "single": {
+      "before": 3,
+      "after": 3,
+      "tasks": 3
+    },
+    "feedback": {
+      "before": 0,
+      "after": 3,
+      "tasks": 3
+    },
+    "memory": {
+      "before": 1,
+      "after": 3,
+      "tasks": 3
+    }
+  }
+}

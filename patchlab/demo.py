@@ -14,6 +14,8 @@ class Demonstrator:
     def decide(self, context: dict) -> tuple[dict, None]:
         if not context["recent_inspection"]:
             return {"kind": "read", "path": "interval.py", "start": 1, "end": 3}, None
+        if context.get("workflow") == "external" and not context.get("reproducer_confirmed"):
+            return {"kind": "reproduce", "code": "from interval import duration\ndef test_control():\n    assert duration(2, 7) == 5\ndef test_issue():\n    assert duration(4, 2) == 0\n"}, None
         feedback = context["repair_feedback"]
         if not feedback:
             diagnosis = "Clamping prevents an empty interval from having negative duration."

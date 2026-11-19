@@ -44,10 +44,10 @@ def test_conversation_summary_checkpoint_and_originals_survive_restart(tmp_path)
         def __init__(self): self.inputs = []
         def summarize(self, source):
             self.inputs.append(json.loads(source))
-            return "摘要：用户的目标和已解决的问题"
+            return "Summary: user goals and resolved issues"
     model = Model()
     summary, recent = ws.context(sid, model)
-    assert summary.startswith("摘要") and len(recent) == 6
+    assert summary.startswith("Summary") and len(recent) == 6
     assert [x["content"] for x in model.inputs[0]["messages"]] == [f"message {i}" for i in range(8)]
     assert len([x for x in ws.records(sid) if x["type"] == "message"]) == 14
     ws2 = Workspace(None, tmp_path)
@@ -80,3 +80,21 @@ def test_agent_evidence_compaction_keeps_recent_and_records_summary():
         lambda event, **details: records.append((event, details)), threshold=1)
     assert summary == "Checked the old file." and remaining == observations[-2:]
     assert records[0][0] == "context_compacted"
+
+
+@pytest.mark.parametrize("invalid", [False, True])
+def test_agent_summary_failure_preserves_older_evidence_excerpt(invalid):
+    class Model:
+        def summarize(self, source):
+            if invalid:
+                return ""
+            raise ValueError("summary truncated")
+    events = []
+    observations = [{"response": "unique root cause"}, {"response": "recent 1"},
+                    {"response": "recent 2"}]
+    summary, recent, feedback = compact_evidence(
+        Model(), "prior diagnosis", observations, [],
+        lambda event, **details: events.append(event), threshold=1)
+    assert "unique root cause" in summary and "prior diagnosis" in summary
+    assert recent == observations[-2:] and feedback == []
+    assert events == ["context_compaction_failed", "context_compaction_fallback"]

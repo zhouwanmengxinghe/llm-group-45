@@ -1,0 +1,49 @@
+{
+  "status": "stagnated",
+  "mode": "memory",
+  "model": "scripted-example-not-an-LLM",
+  "attempts": 1,
+  "verified_candidates": 1,
+  "model_calls": 5,
+  "inspection_calls": 1,
+  "tokens_reported": 0,
+  "calls_with_usage": 0,
+  "provider_requests": 5,
+  "provider_responses_with_usage": 0,
+  "provider_tokens_reported": 0,
+  "provider_usage_complete": false,
+  "provider_requests_by_purpose": {
+    "decision": 5
+  },
+  "call_limit": 10,
+  "attempt_limit": 5,
+  "completion_limit": null,
+  "test_timeout": 30,
+  "approval_enabled": false,
+  "target": [
+    "test_interval.py::test_empty"
+  ],
+  "suite": [
+    "test_interval.py"
+  ],
+  "container_image": null,
+  "container_python": "python",
+  "test_program": null,
+  "test_suffix": [],
+  "external_evaluation": null,
+  "guided": true,
+  "issue_reproducer_enabled": false,
+  "issue_reproducer_required": false,
+  "reproducer_attempts": 0,
+  "reproducer_confirmed": false,
+  "revision": "75e68d48de83c85990041e9c51ee8b01a9786d3b",
+  "initial_target": {
+    "exit_code": 1,
+    "timed_out": false,
+    "seconds": 1.35,
+    "output": "F                                                                        [100%]\r\n================================== FAILURES ===================================\r\n_________________________________ test_empty __________________________________\r\n\r\n    def test_empty():\r\n>       assert duration(6, 3) == 0\r\nE       assert -3 == 0\r\nE        +  where -3 = duration(6, 3)\r\n\r\ntest_interval.py:4: AssertionError\r\n=========================== short test summary info ===========================\r\nFAILED test_interval.py::test_empty - assert -3 == 0\r\n1 failed in 0.44s\r\n"
+  },
+  "duplicate_proposals": 3,
+  "reason": "Three duplicate proposals without a novel candidate.",
+  "elapsed_seconds": 3.829
+}

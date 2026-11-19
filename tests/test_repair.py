@@ -9,6 +9,25 @@ from patchlab.experiment import Task, execute
 from patchlab.workbench import PytestRunner, Workbench, snapshot
 
 
+def test_oversized_read_returns_bounded_evidence_instead_of_retry_loop(tmp_path):
+    (tmp_path / "sample.py").write_text("".join(f"value_{i} = {i}\n" for i in range(200)))
+    bench = Workbench(tmp_path, ["sample.py"])
+    response = bench.inspect({"kind": "read", "path": "sample.py", "start": 80, "end": 160})
+    assert len(response["text"].splitlines()) == 80
+    assert response["end"] == 159 and response["next_start"] == 160
+    assert response["range_capped"] is True
+
+
+def test_src_layout_executes_snapshot_source(tmp_path):
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "snapshot_only_module.py").write_text("value = 3\n")
+    (tmp_path / "test_value.py").write_text("import snapshot_only_module\ndef test_value():\n    assert snapshot_only_module.value == 4\n")
+    runner = PytestRunner(None, 30)
+    assert runner.run(tmp_path, ["test_value.py"])["exit_code"] == 1
+    (tmp_path / "src" / "snapshot_only_module.py").write_text("value = 4\n")
+    assert runner.run(tmp_path, ["test_value.py"])["exit_code"] == 0
+
+
 def run(tmp_path, mode="feedback", approval=None):
     repo = tmp_path / "repo"
     make_fixture(repo)
@@ -40,6 +59,37 @@ def test_single_attempt_cannot_retry(tmp_path):
     assert result["attempts"] == 1
     assert not (out / "final.patch").exists()
     assert any(r["event"] == "candidate_regression" and r["exit_code"] == 1 for r in trace)
+
+
+def test_budget_guidance_and_repeated_inspection_cache(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    make_fixture(repo)
+    task = Task(repo, "HEAD", "Fix interval duration.", ["interval.py"],
+                ["test_interval.py::test_empty"], ["test_interval.py"])
+    inspected = []
+    original = Workbench.inspect
+    def inspect(bench, action):
+        inspected.append(action)
+        return original(bench, action)
+    monkeypatch.setattr(Workbench, "inspect", inspect)
+    monkeypatch.setattr(PytestRunner, "run", lambda *args: {
+        "exit_code": 1, "timed_out": False, "output": "expected failure"})
+    class Model:
+        model = "budget-aware-fixture"
+        def __init__(self): self.contexts = []
+        def decide(self, context):
+            self.contexts.append(context)
+            if context["next_action_constraint"]:
+                return {"kind": "stop", "reason": "need more evidence"}, None
+            return {"kind": "read", "path": "interval.py", "start": 1, "end": 2}, None
+    model = Model()
+    out = tmp_path / "budget-run"
+    result = execute(task, out, model, PytestRunner(None, 30), calls=8)
+    assert result["status"] == "model_stopped" and result["model_calls"] == 5
+    assert [c["decisions_remaining"] for c in model.contexts] == [8, 7, 6, 5, 4]
+    assert len(inspected) == 1
+    trace = [json.loads(row) for row in (out / "events.jsonl").read_text().splitlines()]
+    assert sum(e["event"] == "inspection_cache_hit" for e in trace) == 3
 
 
 def test_external_evaluation_produces_unverified_candidate(tmp_path):
@@ -109,11 +159,26 @@ def test_custom_test_program_accepts_bounded_module_labels(tmp_path):
             runner.validate_selectors(tmp_path, [selector])
 
 
+def stage_git_symlink(repo, name, target):
+    blob = subprocess.check_output(
+        ["git", "-C", str(repo), "hash-object", "-w", "--stdin"], input=target.encode()
+    ).decode().strip()
+    subprocess.run(
+        ["git", "-C", str(repo), "update-index", "--add", "--cacheinfo", f"120000,{blob},{name}"],
+        check=True,
+    )
+
+
 def test_snapshot_preserves_safe_repository_symlink(tmp_path):
     repo = tmp_path / "repo"
     make_fixture(repo)
-    (repo / "interval_alias.py").symlink_to("interval.py")
-    subprocess.run(["git", "-C", str(repo), "add", "interval_alias.py"], check=True)
+    try:
+        (tmp_path / "permission-probe").symlink_to("repo/interval.py")
+    except OSError as exc:
+        if getattr(exc, "winerror", None) == 1314:
+            pytest.skip("Windows has not granted symlink creation permission")
+        raise
+    stage_git_symlink(repo, "interval_alias.py", "interval.py")
     subprocess.run(
         ["git", "-C", str(repo), "commit", "-m", "Add safe symlink"],
         check=True, stdout=subprocess.DEVNULL,
@@ -128,8 +193,7 @@ def test_snapshot_preserves_safe_repository_symlink(tmp_path):
 def test_snapshot_rejects_symlink_outside_repository(tmp_path):
     repo = tmp_path / "repo"
     make_fixture(repo)
-    (repo / "escape.py").symlink_to("../outside.py")
-    subprocess.run(["git", "-C", str(repo), "add", "escape.py"], check=True)
+    stage_git_symlink(repo, "escape.py", "../outside.py")
     subprocess.run(
         ["git", "-C", str(repo), "commit", "-m", "Add unsafe symlink"],
         check=True, stdout=subprocess.DEVNULL,

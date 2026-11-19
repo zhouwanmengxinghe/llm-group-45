@@ -1,0 +1,330 @@
+{
+  "scope": "Historical raw 40 distinct tasks, different implementation batches and recovery paths; not the new unified experiment",
+  "summary": {
+    "single": 19,
+    "feedback": 15,
+    "memory": 17
+  },
+  "instances": [
+    {
+      "task_id": "django__django-12419",
+      "cohort": "swebench-formal10-results.md",
+      "source": "docs/swebench-formal10-results.md",
+      "single": "empty_patch",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "django__django-14580",
+      "cohort": "swebench-formal10-results.md",
+      "source": "docs/swebench-formal10-results.md",
+      "single": "empty_patch",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "django__django-13569",
+      "cohort": "swebench-formal10-results.md",
+      "source": "docs/swebench-formal10-results.md",
+      "single": "empty_patch",
+      "feedback": "unresolved",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "django__django-12155",
+      "cohort": "swebench-formal10-results.md",
+      "source": "docs/swebench-formal10-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "sympy__sympy-21596",
+      "cohort": "swebench-formal10-results.md",
+      "source": "docs/swebench-formal10-results.md",
+      "single": "empty_patch",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "sympy__sympy-16450",
+      "cohort": "swebench-formal10-results.md",
+      "source": "docs/swebench-formal10-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "sympy__sympy-15349",
+      "cohort": "swebench-formal10-results.md",
+      "source": "docs/swebench-formal10-results.md",
+      "single": "empty_patch",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "sphinx-doc__sphinx-8595",
+      "cohort": "swebench-formal10-results.md",
+      "source": "docs/swebench-formal10-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "sphinx-doc__sphinx-7454",
+      "cohort": "swebench-formal10-results.md",
+      "source": "docs/swebench-formal10-results.md",
+      "single": "unresolved",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "sphinx-doc__sphinx-8120",
+      "cohort": "swebench-formal10-results.md",
+      "source": "docs/swebench-formal10-results.md",
+      "single": "resolved",
+      "feedback": "empty_patch",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "django__django-16527",
+      "cohort": "swebench-formal-next10-results.md",
+      "source": "docs/swebench-formal-next10-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "django__django-11265",
+      "cohort": "swebench-formal-next10-results.md",
+      "source": "docs/swebench-formal-next10-results.md",
+      "single": "unresolved",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "django__django-15128",
+      "cohort": "swebench-formal-next10-results.md",
+      "source": "docs/swebench-formal-next10-results.md",
+      "single": "unresolved",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "django__django-12209",
+      "cohort": "swebench-formal-next10-results.md",
+      "source": "docs/swebench-formal-next10-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "sympy__sympy-22914",
+      "cohort": "swebench-formal-next10-results.md",
+      "source": "docs/swebench-formal-next10-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "sympy__sympy-23824",
+      "cohort": "swebench-formal-next10-results.md",
+      "source": "docs/swebench-formal-next10-results.md",
+      "single": "resolved",
+      "feedback": "empty_patch",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "sympy__sympy-17139",
+      "cohort": "swebench-formal-next10-results.md",
+      "source": "docs/swebench-formal-next10-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "sphinx-doc__sphinx-8551",
+      "cohort": "swebench-formal-next10-results.md",
+      "source": "docs/swebench-formal-next10-results.md",
+      "single": "resolved",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "sphinx-doc__sphinx-9591",
+      "cohort": "swebench-formal-next10-results.md",
+      "source": "docs/swebench-formal-next10-results.md",
+      "single": "empty_patch",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "sphinx-doc__sphinx-7985",
+      "cohort": "swebench-formal-next10-results.md",
+      "source": "docs/swebench-formal-next10-results.md",
+      "single": "empty_patch",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "astropy__astropy-14365",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "unresolved",
+      "feedback": "unresolved",
+      "memory": "unresolved"
+    },
+    {
+      "task_id": "astropy__astropy-14995",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "astropy__astropy-7671",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "empty_patch",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "django__django-13346",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "unresolved",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "django__django-14792",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "unresolved",
+      "feedback": "unresolved",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "mwaskom__seaborn-3069",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "empty_patch",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "mwaskom__seaborn-3187",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "unresolved",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "pallets__flask-5014",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "psf__requests-1142",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "psf__requests-2317",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "unresolved",
+      "feedback": "unresolved",
+      "memory": "unresolved"
+    },
+    {
+      "task_id": "psf__requests-2931",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "empty_patch",
+      "feedback": "empty_patch",
+      "memory": "unresolved"
+    },
+    {
+      "task_id": "pydata__xarray-6721",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "resolved",
+      "feedback": "empty_patch",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "pylint-dev__pylint-4551",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "empty_patch",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "pylint-dev__pylint-6528",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "unresolved",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "pytest-dev__pytest-5809",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "pytest-dev__pytest-7205",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "resolved"
+    },
+    {
+      "task_id": "scikit-learn__scikit-learn-10297",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "resolved",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "sphinx-doc__sphinx-8475",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "resolved",
+      "feedback": "resolved",
+      "memory": "unresolved"
+    },
+    {
+      "task_id": "sympy__sympy-16766",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "resolved",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    },
+    {
+      "task_id": "sympy__sympy-16792",
+      "cohort": "supplemental20-results.md",
+      "source": "docs/supplemental20-results.md",
+      "single": "empty_patch",
+      "feedback": "empty_patch",
+      "memory": "empty_patch"
+    }
+  ]
+}

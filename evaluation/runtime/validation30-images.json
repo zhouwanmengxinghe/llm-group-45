@@ -1,0 +1,212 @@
+[
+  {
+    "instance_id": "pytest-dev__pytest-5262",
+    "repo": "pytest-dev/pytest",
+    "base_commit": "a4f540b5f0b718fa5f418aa100d564be8a754f46",
+    "version": "4.5",
+    "image": "patchlab-validation-pytest-5262:v4"
+  },
+  {
+    "instance_id": "pytest-dev__pytest-6202",
+    "repo": "pytest-dev/pytest",
+    "base_commit": "168f5b26f5b33b728fca8336a1a21ce904212374",
+    "version": "5.2",
+    "image": "patchlab-validation-pytest-6202:v4"
+  },
+  {
+    "instance_id": "pytest-dev__pytest-7432",
+    "repo": "pytest-dev/pytest",
+    "base_commit": "933c0ea74077d30f39694c23318c395a7f0f4982",
+    "version": "5.4",
+    "image": "patchlab-validation-pytest-7432:v4"
+  },
+  {
+    "instance_id": "sympy__sympy-15017",
+    "repo": "sympy/sympy",
+    "base_commit": "75dce50692a12249f8cff532399d329e5567686e",
+    "version": "1.2",
+    "image": "patchlab-validation-sympy-15017:v4"
+  },
+  {
+    "instance_id": "sympy__sympy-15345",
+    "repo": "sympy/sympy",
+    "base_commit": "5a89ce1423c7d582c52d33aab6861685ea0c3cbe",
+    "version": "1.4",
+    "image": "patchlab-validation-sympy-15345:v4"
+  },
+  {
+    "instance_id": "sympy__sympy-15809",
+    "repo": "sympy/sympy",
+    "base_commit": "7e2fe37b6b8f896bf7b7991ebf2f24a7b29972c2",
+    "version": "1.4",
+    "image": "patchlab-validation-sympy-15809:v4"
+  },
+  {
+    "instance_id": "sympy__sympy-16886",
+    "repo": "sympy/sympy",
+    "base_commit": "1a66468878d9b04bfb57440960564e0faf67961c",
+    "version": "1.5",
+    "image": "patchlab-validation-sympy-16886:v4"
+  },
+  {
+    "instance_id": "sympy__sympy-18763",
+    "repo": "sympy/sympy",
+    "base_commit": "4a8aa105ead953d5166e73c235a559598be82771",
+    "version": "1.5",
+    "image": "patchlab-validation-sympy-18763:v4"
+  },
+  {
+    "instance_id": "sympy__sympy-19637",
+    "repo": "sympy/sympy",
+    "base_commit": "8044a58bc82bd9dff32f591999ea8b9eb6702786",
+    "version": "1.7",
+    "image": "patchlab-validation-sympy-19637:v4"
+  },
+  {
+    "instance_id": "sympy__sympy-20916",
+    "repo": "sympy/sympy",
+    "base_commit": "992a4e3f718d33b98b026bcf5ed987b76696fc81",
+    "version": "1.8",
+    "image": "patchlab-validation-sympy-20916:v4"
+  },
+  {
+    "instance_id": "django__django-10999",
+    "repo": "django/django",
+    "base_commit": "35c52a36dc012e2d03c2ad1eb7bfe3f08077cdf7",
+    "version": "3.0",
+    "image": "patchlab-validation-django-10999:v2"
+  },
+  {
+    "instance_id": "django__django-11099",
+    "repo": "django/django",
+    "base_commit": "a5ba6f7f31b04757adbd49f9ba16da97bd6ab5b6",
+    "version": "3.0",
+    "image": "patchlab-validation-django-11099:v2"
+  },
+  {
+    "instance_id": "django__django-11119",
+    "repo": "django/django",
+    "base_commit": "3ae3c2e6959c4ebcecfd2ce6a0dcd4fada0d75d8",
+    "version": "3.0",
+    "image": "patchlab-validation-django-11119:v2"
+  },
+  {
+    "instance_id": "django__django-11133",
+    "repo": "django/django",
+    "base_commit": "38a6c2fa1a83727164840e60cb45003084f94ca8",
+    "version": "3.0",
+    "image": "patchlab-validation-django-11133:v2"
+  },
+  {
+    "instance_id": "django__django-11163",
+    "repo": "django/django",
+    "base_commit": "9dbeb4e3559d798b2a377134f8f0376cefed4b42",
+    "version": "3.0",
+    "image": "patchlab-validation-django-11163:v2"
+  },
+  {
+    "instance_id": "django__django-11880",
+    "repo": "django/django",
+    "base_commit": "95bdcc8cc19f3ff8df195c7726d43ced70309373",
+    "version": "3.1",
+    "image": "patchlab-validation-django-11880:v2"
+  },
+  {
+    "instance_id": "django__django-12276",
+    "repo": "django/django",
+    "base_commit": "254f0b73db70459ba835a72d04a5ef690f25e225",
+    "version": "3.1",
+    "image": "patchlab-validation-django-12276:v2"
+  },
+  {
+    "instance_id": "django__django-13023",
+    "repo": "django/django",
+    "base_commit": "70e4853047bf619da495bf1c5079297f661a1ef9",
+    "version": "3.2",
+    "image": "patchlab-validation-django-13023:v2"
+  },
+  {
+    "instance_id": "django__django-14089",
+    "repo": "django/django",
+    "base_commit": "7b7bffefd0553407b7e045a59437c5619189f9ab",
+    "version": "4.0",
+    "image": "patchlab-validation-django-14089:v2"
+  },
+  {
+    "instance_id": "django__django-14373",
+    "repo": "django/django",
+    "base_commit": "dbd4d777643a24f3f545ebdfe83cb97347016b7b",
+    "version": "4.0",
+    "image": "patchlab-validation-django-14373:v2"
+  },
+  {
+    "instance_id": "django__django-11206",
+    "repo": "django/django",
+    "base_commit": "b79ab88517bfee0bbd6cf22840939deb27f3d88b",
+    "version": "3.0",
+    "image": "patchlab-validation-django-11206:v2"
+  },
+  {
+    "instance_id": "django__django-11848",
+    "repo": "django/django",
+    "base_commit": "cf009d6204100ee4d24bb60229027b9692c2ad00",
+    "version": "3.1",
+    "image": "patchlab-validation-django-11848:v2"
+  },
+  {
+    "instance_id": "django__django-13195",
+    "repo": "django/django",
+    "base_commit": "d55b0b25a6e8d54e47ff264c908b0d55a7d658d8",
+    "version": "3.2",
+    "image": "patchlab-validation-django-13195:v2"
+  },
+  {
+    "instance_id": "django__django-13670",
+    "repo": "django/django",
+    "base_commit": "92f42e45a4d4b91c0ec241cf4fa9dbfca83da40d",
+    "version": "3.2",
+    "image": "patchlab-validation-django-13670:v2"
+  },
+  {
+    "instance_id": "django__django-14155",
+    "repo": "django/django",
+    "base_commit": "c306b43681afa98eaf56b9769dff074836779868",
+    "version": "4.0",
+    "image": "patchlab-validation-django-14155:v2"
+  },
+  {
+    "instance_id": "sympy__sympy-13031",
+    "repo": "sympy/sympy",
+    "base_commit": "14ec548285669d6644a4bcc2f84c382900df9509",
+    "version": "1.1",
+    "image": "patchlab-validation-sympy-13031:v2"
+  },
+  {
+    "instance_id": "sympy__sympy-13647",
+    "repo": "sympy/sympy",
+    "base_commit": "5ee2dccb4ea70d7c3e765dd3793d0eb059e0f638",
+    "version": "1.1",
+    "image": "patchlab-validation-sympy-13647:v2"
+  },
+  {
+    "instance_id": "sympy__sympy-14531",
+    "repo": "sympy/sympy",
+    "base_commit": "cb39ac14fadeac09896ee46bde235e2587af56e9",
+    "version": "1.1",
+    "image": "patchlab-validation-sympy-14531:v2"
+  },
+  {
+    "instance_id": "sympy__sympy-19346",
+    "repo": "sympy/sympy",
+    "base_commit": "736c0fc10ce5c7b288ba1d932b7b89fe78af2f52",
+    "version": "1.7",
+    "image": "patchlab-validation-sympy-19346:v2"
+  },
+  {
+    "instance_id": "sympy__sympy-20154",
+    "repo": "sympy/sympy",
+    "base_commit": "ba46b711ce9976629be26c29f907775aa659d1b2",
+    "version": "1.7",
+    "image": "patchlab-validation-sympy-20154:v2"
+  }
+]

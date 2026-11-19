@@ -1,0 +1,3 @@
+httpbin==0.10.2
+certifi==2026.10.23
+pytest-timeout==2.3.1

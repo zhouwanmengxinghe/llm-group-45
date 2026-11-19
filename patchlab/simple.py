@@ -34,7 +34,7 @@ def copy_project(source: Path, dest: Path) -> None:
                 continue
             total += path.stat().st_size
             if total > 30_000_000:
-                raise ValueError("项目快照超过 30 MB，请选择较小的项目或清理生成文件。")
+                raise ValueError("Project snapshot exceeds 30 MB. Select a smaller project or remove generated files.")
             target = dest / path.relative_to(source)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(path, target)
@@ -55,11 +55,11 @@ def editable_files(root: Path) -> list[str]:
 
 def valid_reproducer(code: object) -> str:
     if not isinstance(code, str) or not 1 <= len(code) <= 6000 or "\x00" in code:
-        raise ValueError("复现测试必须是长度不超过 6000 字符的 Python 代码。")
+        raise ValueError("The reproducer must be Python code of at most 6000 characters.")
     tree = ast.parse(code)
     functions = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name.startswith("test_")]
     if not functions or not any(isinstance(n, ast.Assert) for f in functions for n in ast.walk(f)):
-        raise ValueError("复现测试需要包含 test_ 函数和表达预期行为的 assert。")
+        raise ValueError("The reproducer must contain test_ functions and assertions of expected behavior.")
     return code.rstrip() + "\n"
 
 
@@ -68,7 +68,7 @@ def execute_simple(repo: Path, issue: str, steps: str, output: Path, model, runn
                    calls: int = 20) -> dict:
     output = output.resolve()
     if output.is_relative_to(repo.resolve()):
-        raise ValueError("结果目录不能位于目标项目内。")
+        raise ValueError("The result directory must be outside the target project.")
     output.mkdir(parents=True, exist_ok=False)
     start = time.monotonic()
     result = {"status": "execution_error", "mode": "simple", "model": model.model,
@@ -107,7 +107,7 @@ def execute_simple(repo: Path, issue: str, steps: str, output: Path, model, runn
                     record("decision", action=action, usage=usage)
                     kind = action.get("kind")
                     if kind == "stop":
-                        result.update(status="needs_information", reason=str(action.get("reason", "需要更多复现步骤"))[:2000])
+                        result.update(status="needs_information", reason=str(action.get("reason", "More reproduction steps are needed"))[:2000])
                         break
                     if kind in ("files", "search", "read"):
                         try:
@@ -125,7 +125,7 @@ def execute_simple(repo: Path, issue: str, steps: str, output: Path, model, runn
                             shutil.copytree(frozen, check)
                             filename = "test_patchlab_generated_reproducer.py"
                             if (frozen / filename).exists():
-                                raise ValueError("项目包含保留的复现文件名。")
+                                raise ValueError("The project contains a reserved reproducer filename.")
                             (check / filename).write_text(test, encoding="utf-8", newline="\n")
                             observed = runner.run(check, [filename])
                             record("reproducer_test", **observed)
@@ -169,7 +169,7 @@ def execute_simple(repo: Path, issue: str, steps: str, output: Path, model, runn
                                 break
                             failed = regression or focused
                             feedback.append({"stage": "regression" if regression else "target", "output": failed["output"][-2000:]})
-                            record("candidate_rejected", attempt=number, failure="测试未通过")
+                            record("candidate_rejected", attempt=number, failure="Tests did not pass")
                         except (ValueError, SyntaxError, UnicodeError) as exc:
                             feedback.append({"stage": "proposal", "error": str(exc)})
                             record("candidate_rejected", attempt=number, failure=str(exc))
@@ -179,7 +179,7 @@ def execute_simple(repo: Path, issue: str, steps: str, output: Path, model, runn
                         continue
                     feedback.append({"error": "Unknown action; use files, search, read, reproduce, propose, or stop."})
                 else:
-                    result.update(status="needs_information", reason="未能在调用预算内完成复现或修复，请提供更多复现步骤。")
+                    result.update(status="needs_information", reason="Could not reproduce or repair within the call budget. Provide more reproduction steps.")
         except Exception as exc:
             result["reason"] = str(exc)[:2000]
             record("error", error_type=type(exc).__name__, message=result["reason"])

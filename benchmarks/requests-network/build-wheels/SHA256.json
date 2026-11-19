@@ -1,0 +1,32 @@
+[
+  {
+    "file": "flit_core-3.9.0-py3-none-any.whl",
+    "sha256": "7aada352fb0c7f5538c4fafeddf314d3a6a92ee8e2b1de70482329e42de70301",
+    "source": "https://pypi.org/pypi/flit_core/3.9.0/json",
+    "download_url": "https://files.pythonhosted.org/packages/38/45/618e84e49a6c51e5dd15565ec2fcd82ab273434f236b8f108f065ded517a/flit_core-3.9.0-py3-none-any.whl"
+  },
+  {
+    "file": "setuptools_scm-6.4.2-py3-none-any.whl",
+    "sha256": "acea13255093849de7ccb11af9e1fb8bde7067783450cee9ef7a93139bddf6d4",
+    "source": "https://pypi.org/pypi/setuptools_scm/6.4.2/json",
+    "download_url": "https://files.pythonhosted.org/packages/e3/e5/c28b544051340e63e0d507eb893c9513d3a300e5e9183e2990518acbfe36/setuptools_scm-6.4.2-py3-none-any.whl"
+  },
+  {
+    "file": "extension_helpers-1.1.0-py3-none-any.whl",
+    "sha256": "a47a15a4ee61ca29398793dfc491be4c39cf2bc42d07e933e100446eab6ca68f",
+    "source": "https://pypi.org/pypi/extension-helpers/1.1.0/json",
+    "download_url": "https://files.pythonhosted.org/packages/46/ac/d6f866696c75b0f97518966ad3c20ade91dcd3a1e18593a2e5f2dc2e865b/extension_helpers-1.1.0-py3-none-any.whl"
+  },
+  {
+    "file": "Cython-0.29.34-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_24_x86_64.whl",
+    "sha256": "cfb2302ef617d647ee590a4c0a00ba3c2da05f301dcefe7721125565d2e51351",
+    "source": "https://pypi.org/pypi/Cython/0.29.34/json",
+    "download_url": "https://files.pythonhosted.org/packages/2f/6d/7dc0e08b5305ffb790043535460c2bf2e1d2a74e46e1e284d0886c6cb0ed/Cython-0.29.34-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_24_x86_64.whl"
+  },
+  {
+    "file": "tomli-2.0.1-py3-none-any.whl",
+    "sha256": "939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc",
+    "source": "https://pypi.org/pypi/tomli/2.0.1/json",
+    "download_url": "https://files.pythonhosted.org/packages/97/75/10a9ebee3fd790d20926a90a2547f0bf78f371b2f13aa822c759680ca7b9/tomli-2.0.1-py3-none-any.whl"
+  }
+]

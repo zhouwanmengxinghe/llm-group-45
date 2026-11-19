@@ -29,7 +29,7 @@ def test_config_and_provider_request(tmp_path, monkeypatch):
         def read(self, limit):
             return json.dumps({"choices": [{"message": {"content": '{"kind":"files","prefix":""}'},
                                               "finish_reason": "stop"}],
-                               "usage": {"total_tokens": 17}}).encode()
+                               "model": "model-one-serving-version", "usage": {"total_tokens": 17}}).encode()
 
     class Opener:
         def open(self, request, timeout):
@@ -54,6 +54,7 @@ def test_config_and_provider_request(tmp_path, monkeypatch):
         "responses_with_usage": 2,
         "tokens_reported": 34,
         "requests_by_purpose": {"decision": 1, "summary": 1},
+        "response_models": ["model-one-serving-version"],
     }
     monkeypatch.setenv("PATCHLAB_MODEL", "model-two")
     assert ChatDecider(512, config).model == "model-two"

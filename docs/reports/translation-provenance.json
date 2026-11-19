@@ -1,0 +1,16 @@
+{
+  "source_master": "PatchLab_Final_Report_CN_Illustrated.docx",
+  "source_master_sha256": "5d89a23d11fca5734333ea174b78302251b151ca49f43efa870beb75f7dd4dd2",
+  "output": "PatchLab_Final_Report_EN_Illustrated.docx",
+  "output_sha256": "6b67c58f5bcb4016fa4a11e61374220863ba5aada1400f5612ef83f40fa637f3",
+  "scope": "English translation of the saved Chinese Word master; same section order, tables, metrics and two translated figures",
+  "format": "Original Letter single-column geometry; Times New Roman 10pt body with 11pt leading for English",
+  "translated_body_paragraphs": 69,
+  "translated_tables": 8,
+  "translated_figures": 2,
+  "pdf_sha256": "fc2e8d66f289c4aaf839aeb37711b592b1bde120cd3165c05aa8e52487ed1249",
+  "pdf_pages": 8,
+  "visual_check": "All eight final rendered pages inspected; figures, tables and page breaks checked",
+  "selected_prompt_record": "ai_records/recoverable_project_prompts_en.md",
+  "selected_prompt_sha256": "e657930c88e19df7010b75bbcdb0aba67f49c15fd6f527187d8aa8a6ea1adf7d"
+}

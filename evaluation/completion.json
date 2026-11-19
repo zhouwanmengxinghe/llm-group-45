@@ -1,0 +1,36 @@
+{
+  "runs": 90,
+  "summary": {
+    "single": {
+      "resolved": 21,
+      "n": 30,
+      "pilot10_resolved": 7,
+      "new20_resolved": 14,
+      "actual_tokens": 479479,
+      "equivalent_tokens": 479479,
+      "duplicate_proposals": 0,
+      "median_seconds": 223.9
+    },
+    "feedback": {
+      "resolved": 19,
+      "n": 30,
+      "pilot10_resolved": 6,
+      "new20_resolved": 13,
+      "actual_tokens": 217241,
+      "equivalent_tokens": 592028,
+      "duplicate_proposals": 10,
+      "median_seconds": 255.2
+    },
+    "memory": {
+      "resolved": 22,
+      "n": 30,
+      "pilot10_resolved": 7,
+      "new20_resolved": 15,
+      "actual_tokens": 236196,
+      "equivalent_tokens": 606927,
+      "duplicate_proposals": 11,
+      "median_seconds": 252.7
+    }
+  },
+  "bilingual_reports_written": true
+}

@@ -118,6 +118,8 @@ def main() -> int:
     batch.add_argument("--output", required=True, type=Path)
     batch.add_argument("--mode", action="append", choices=["single", "feedback", "memory"])
     batch.add_argument("--repeats", type=positive, default=1)
+    batch.add_argument("--paired-prefix", action="store_true",
+                       help="Replay identical pre-patch inputs across conditions; report actual and equivalent usage separately.")
     batch.add_argument("--timeout", type=positive, default=90)
     batch.add_argument("--calls", type=positive, default=16)
     batch.add_argument("--attempts", choices=range(1, 6), type=int, default=5)
@@ -199,6 +201,7 @@ def main() -> int:
                 ),
                 modes=modes, repeats=args.repeats,
                 calls=args.calls, attempts=args.attempts,
+                paired_prefix=args.paired_prefix,
             )
             print(json.dumps(result, indent=2))
             return 0

@@ -1,0 +1,19 @@
+[
+  {
+    "attempt": 1,
+    "stage": "regression",
+    "hypothesis": "Clamp reversed intervals while preserving positive durations.",
+    "failure": "pytest exit 1",
+    "evidence": ".F                                                                       [100%]\r\n================================== FAILURES ===================================\r\n________________________________ test_positive ________________________________\r\n\r\n    def test_positive():\r\n>       assert duration(2, 7) == 5\r\nE       assert 0 == 5\r\nE        +  where 0 = duration(2, 7)\r\n\r\ntest_interval.py:7: AssertionError\r\n=========================== short test summary info ===========================\r\nFAILED test_interval.py::test_positive - assert 0 == 5\r\n1 failed, 1 passed in <duration>s\r\n",
+    "issue_contract_passed": true,
+    "action_fingerprint": "87ad887b502c824a899e12de5a2b5f42b511fabe70b7a5128d29a3ab0cc11c7e",
+    "test": "",
+    "edits": [
+      {
+        "path": "interval.py",
+        "before": "    return end - start",
+        "after": "    return 0"
+      }
+    ]
+  }
+]

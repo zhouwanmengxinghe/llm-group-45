@@ -90,13 +90,13 @@ class Workspace:
         self.path(sid)
         with self.lock:
             if sid in self.active:
-                raise ValueError("当前会话正在处理任务，请等待完成。")
+                raise ValueError("This session is busy. Wait for the current task.")
             self.active.add(sid)
         try:
             mode = data.get("kind")
             content = data.get("message", "")
             if mode not in ("chat", "repair") or not isinstance(content, str) or not 1 <= len(content.strip()) <= 8000:
-                raise ValueError("请输入不超过 8000 字符的消息。")
+                raise ValueError("Enter a message of at most 8000 characters.")
             # Validate the model before starting a worker; no network call is made here.
             model = ChatDecider(1200, self.config)
             model.on_retry = lambda info: self.emit(sid, "model_retry", **info)
@@ -104,19 +104,19 @@ class Workspace:
                 def list_field(name):
                     value = data.get(name, "")
                     if not isinstance(value, str) or not value.strip():
-                        raise ValueError(f"请填写 {name}。")
+                        raise ValueError(f"Please provide {name}.")
                     return [x.strip() for x in value.splitlines() if x.strip()]
                 repo = data.get("repo", "")
                 if not isinstance(repo, str) or not Path(repo).is_dir():
-                    raise ValueError("请输入有效的项目目录。")
+                    raise ValueError("Enter a valid project directory.")
                 image = data.get("image", "").strip()
                 simple = data.get("repair_type", "professional") == "simple"
                 steps = data.get("steps", "")
                 if not isinstance(steps, str) or len(steps) > 4000:
-                    raise ValueError("操作步骤不能超过 4000 字符。")
+                    raise ValueError("Reproduction steps must not exceed 4000 characters.")
                 if not simple:
                     if not image and data.get("trusted") is not True:
-                        raise ValueError("请填写 Docker 镜像，或确认信任并在本机运行测试。")
+                        raise ValueError("Specify a Docker image or confirm that this project is trusted for local test execution.")
                     task = Task(Path(repo), data.get("revision", "HEAD") or "HEAD", content,
                                 list_field("editable"), list_field("target"), list_field("suite"))
                     run_mode = data.get("mode", "feedback")
@@ -149,11 +149,11 @@ class Workspace:
                         patch = patch_path.read_text(encoding="utf-8") if patch_path.exists() else ""
                         self.emit(sid, "run_result", run_id=run_id, result=result, patch=patch)
                         self.emit(sid, "message", role="assistant", content=(
-                            f"修复任务结束：{result['status']}。尝试 {result['attempts']} 次。"
-                            + (f"\n诊断：{result['diagnosis']}" if result.get('diagnosis') else "")
-                            + (f"\n原因：{result['reason']}" if result.get('reason') else "")))
+                            f"Repair finished: {result['status']}. Effective candidates: {result['attempts']}."
+                            + (f"\nDiagnosis: {result['diagnosis']}" if result.get('diagnosis') else "")
+                            + (f"\nReason: {result['reason']}" if result.get('reason') else "")))
                 except Exception as exc:
-                    self.emit(sid, "message", role="assistant", content=f"执行失败：{type(exc).__name__}: {exc}")
+                    self.emit(sid, "message", role="assistant", content=f"Execution failed: {type(exc).__name__}: {exc}")
                 finally:
                     with self.lock:
                         self.active.discard(sid)
@@ -213,7 +213,7 @@ def serve(config: Path | None, port: int = 8765, open_browser: bool = True):
                         except ValueError:
                             continue
                         if rows:
-                            first = next((r.get("content", "") for r in rows if r.get("role") == "user"), "新会话")
+                            first = next((r.get("content", "") for r in rows if r.get("role") == "user"), "New session")
                             sessions.append({"id": directory.name, "title": first[:40], "time": rows[-1].get("time", 0)})
                 self.send_json(200, sorted(sessions, key=lambda x: x["time"], reverse=True))
             else:
@@ -234,7 +234,7 @@ def serve(config: Path | None, port: int = 8765, open_browser: bool = True):
 
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     url = f"http://127.0.0.1:{server.server_port}/#{token}"
-    print(f"PatchLab 工作台：{url}", flush=True)
+    print(f"PatchLab workspace: {url}", flush=True)
     if open_browser:
         webbrowser.open(url)
     try:

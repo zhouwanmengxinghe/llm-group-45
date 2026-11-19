@@ -81,10 +81,15 @@ class Workbench:
             return {"paths": [p for p in sorted(self.sources) if p.startswith(prefix)][:100]}
         if operation == "search":
             query = action.get("text")
+            prefix = action.get("prefix", "")
+            if not isinstance(prefix, str):
+                raise ValueError("search prefix must be a string")
             if not isinstance(query, str) or not 1 <= len(query) <= 160:
                 raise ValueError("search needs a literal query of 1–160 characters")
             hits = []
-            for name in sorted(self.sources):
+            for name in sorted(self.sources, key=lambda p: (p not in self.editable, p)):
+                if not name.startswith(prefix):
+                    continue
                 path = self.root / name
                 if path.stat().st_size > 256_000:
                     continue
@@ -98,13 +103,20 @@ class Workbench:
             name, start, end = action.get("path"), action.get("start"), action.get("end")
             if not isinstance(name, str) or name not in self.sources:
                 raise ValueError("read requires a listed Python path")
-            if type(start) is not int or type(end) is not int or not 1 <= start <= end <= start + 79:
-                raise ValueError("read requires a 1-based range of up to 80 lines")
+            if type(start) is not int or type(end) is not int or not 1 <= start <= end:
+                raise ValueError("read requires positive 1-based start and end, with start <= end")
+            requested_end = end
+            end = min(end, start + 79)
             path = self.root / name
             if path.stat().st_size > 256_000:
                 raise ValueError("file exceeds the inspection limit")
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-            return {"path": name, "start": start, "text": "\n".join(lines[start - 1 : end])[:8000]}
+            response = {"path": name, "start": start, "end": min(end, len(lines)),
+                        "text": "\n".join(lines[start - 1 : end])[:8000]}
+            if requested_end > end:
+                response["range_capped"] = True
+                response["next_start"] = end + 1
+            return response
         raise ValueError("unknown inspection operation")
 
     def prepare(self, edits: object) -> tuple[str, dict[str, str]]:
@@ -129,7 +141,18 @@ class Workbench:
                 originals[name] = raw.decode("utf-8")
             current = changes.get(name, originals[name])
             if current.count(old) != 1:
-                raise ValueError(f"before text must occur exactly once: {name}")
+                anchor = next((line.strip() for line in old.splitlines() if line.strip()), "")
+                lines = current.splitlines()
+                matches = [i for i, line in enumerate(lines) if anchor and line.strip() == anchor]
+                if not matches and anchor:
+                    ranked = sorted(((difflib.SequenceMatcher(None, anchor, line.strip()).ratio(), i)
+                                     for i, line in enumerate(lines)), reverse=True)
+                    matches = [i for score, i in ranked[:2] if score >= .65]
+                snippets = [f"lines {max(0, i-2)+1}-{min(len(lines), i+8)}:\n" +
+                            "\n".join(lines[max(0, i-2):i+8]) for i in matches[:2]]
+                raise ValueError(f"before text must occur exactly once: {name}; found {current.count(old)}. "
+                                 "Copy a unique anchor from the original unchanged source.\n" +
+                                 "\n".join(snippets)[:1800])
             changes[name] = current.replace(old, new, 1)
         parts = []
         for name, updated in sorted(changes.items()):
@@ -206,7 +229,7 @@ class PytestRunner:
         base = (
             [*self.test_program, *selectors, *self.test_suffix]
             if self.test_program else
-            ["-B", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--", *selectors]
+            ["-B", "-m", "pytest", "-q", "-p", "no:cacheprovider", *self.test_suffix, "--", *selectors]
         )
         container = "patchlab-" + uuid4().hex
         if self.image:
@@ -217,6 +240,8 @@ class PytestRunner:
                 "--pids-limit", "128", "--tmpfs", "/tmp:rw,nosuid,nodev,size=128m",
                 "--mount", f"type=bind,source={root},target=/repo,readonly",
                 "--workdir", "/repo", "--env", "HOME=/tmp",
+                "--env", "PYTHONPATH=/repo/src:/repo",
+                "--env", "HYPOTHESIS_STORAGE_DIRECTORY=/tmp/patchlab-hypothesis",
                 "--entrypoint", self.python_executable, self.image, *base,
             ]
             env = os.environ.copy()
@@ -226,6 +251,7 @@ class PytestRunner:
                 "PATH", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "TEMP", "TMP", "LANG",
             }}
             env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
+            env["PYTHONPATH"] = os.pathsep.join((str(root.resolve() / "src"), str(root.resolve())))
         start = time.monotonic()
         with subprocess.Popen(
             command, cwd=root, env=env, stdin=subprocess.DEVNULL,

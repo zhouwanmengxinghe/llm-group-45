@@ -1,0 +1,6 @@
+--- a/interval.py
++++ b/interval.py
+@@ -1,2 +1,2 @@
+ def duration(start, end):
+-    return max(0, end - start)
++    return max(0, end - start) / 60

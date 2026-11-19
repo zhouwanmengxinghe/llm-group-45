@@ -16,6 +16,8 @@ def transient_error(exc: Exception) -> bool:
         return exc.code in {408, 429, 500, 502, 503, 504}
     if isinstance(exc, URLError):
         return transient_error(exc.reason) if isinstance(exc.reason, Exception) else False
+    if isinstance(exc, ssl.SSLEOFError):
+        return True
     if isinstance(exc, ssl.SSLError):
         return False
     if isinstance(exc, socket.gaierror):

@@ -62,7 +62,7 @@ def read_mac_keys() -> dict[str, str]:
         return {}
     data = json.loads(MAC_SECRET.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in data.items()):
-        raise ValueError("本地密钥文件格式无效，请检查 configs/.macos-keys.json。")
+        raise ValueError("Invalid local key file. Check configs/.macos-keys.json.")
     return data
 
 
@@ -82,22 +82,22 @@ def save_mac_key(name: str, key: str) -> None:
 
 def configure() -> None:
     if not CONFIG.exists():
-        print("\n首次使用：请选择模型服务。")
-        print("1. DeepSeek 官方 V4.1 Flash（默认，只需 API 密钥）")
-        print("2. 其他兼容 Chat Completions 的模型（自填地址和模型名）")
-        print("3. 暂不配置，先打开工作台")
-        choice = input("请选择 [1/2/3，默认 1]: ").strip()
+        print("\nFirst launch: choose a model provider.")
+        print("1. DeepSeek Flash (default; official API key required)")
+        print("2. Other compatible Chat Completions provider (endpoint and model required)")
+        print("3. Skip model setup and open the workspace")
+        choice = input("Choose [1/2/3; default 1]: ").strip()
         if choice in ("", "1"):
             url, name = DEEPSEEK_URL, DEEPSEEK_MODEL
         elif choice == "2":
-            url = input("完整 Chat completions URL: ").strip()
-            name = input("模型名称: ").strip()
+            url = input("Full chat completions URL: ").strip()
+            name = input("Model name: ").strip()
             if not url or not name:
-                raise ValueError("接口地址和模型名称不能为空，配置未保存。")
+                raise ValueError("Endpoint and model are required. Configuration was not saved.")
         elif choice == "3":
             return
         else:
-            raise ValueError("请选择 1、2 或 3。")
+            raise ValueError("Choose 1, 2, or 3.")
         # JSON strings are valid TOML basic strings for these configuration values.
         content = ("[model]\nurl = " + json.dumps(url, ensure_ascii=False)
                    + "\nname = " + json.dumps(name, ensure_ascii=False)
@@ -109,7 +109,7 @@ def configure() -> None:
         model = tomllib.load(stream).get("model", {})
     key_name = model.get("api_key_env", "PATCHLAB_API_KEY")
     if not isinstance(key_name, str) or not key_name:
-        raise ValueError("模型配置中的 api_key_env 无效。")
+        raise ValueError("Invalid api_key_env in model configuration.")
     if os.environ.get(key_name):
         return
     if sys.platform == "darwin":
@@ -121,40 +121,40 @@ def configure() -> None:
         try:
             os.environ[key_name] = unprotect(SECRET.read_text(encoding="utf-8"))
         except (OSError, ValueError, UnicodeError) as exc:
-            raise ValueError("无法解密保存的密钥。请删除 configs/.model-key 后重新启动并输入密钥。") from exc
+            raise ValueError("Cannot decrypt the saved key. Remove configs/.model-key, restart, and enter the key again.") from exc
         if os.environ[key_name]:
             return
-    print(f"请输入 {key_name}（输入时不会显示；留空可先打开页面）。")
-    key = getpass.getpass("API 密钥: ")
+    print(f"Enter {key_name} (hidden input; leave blank to open the page without a model).")
+    key = getpass.getpass("API key: ")
     if not key:
         return
     os.environ[key_name] = key
     if sys.platform == "win32" and key_name == "PATCHLAB_API_KEY":
-        answer = input("是否在当前 Windows 用户下加密保存密钥，方便下次启动？[Y/n] ").strip().lower()
+        answer = input("Encrypt and save the key for this Windows account? [Y/n] ").strip().lower()
         if answer in ("", "y", "yes"):
             SECRET.write_text(protect(key), encoding="utf-8")
     elif sys.platform == "darwin":
-        answer = input("是否将密钥以明文保存在本机项目目录，下次自动读取？[y/N] ").strip().lower()
+        answer = input("Save the key as plaintext in this local project for the next launch? [y/N] ").strip().lower()
         if answer in ("y", "yes"):
             save_mac_key(key_name, key)
-            print("已保存到 configs/.macos-keys.json（仅当前用户可读写，文件不会提交到 Git）。")
+            print("Saved to configs/.macos-keys.json (owner-only permissions; excluded from Git).")
         else:
-            print("密钥只用于本次运行。")
+            print("The key is available for this run only.")
 
 
 def ensure_environment() -> None:
     if not PYTHON.exists():
-        print("正在创建项目独立的 Python 环境……", flush=True)
+        print("Creating the project Python environment...", flush=True)
         venv.EnvBuilder(with_pip=True).create(ROOT / ".venv")
     pip_check = subprocess.run([str(PYTHON), "-m", "pip", "--version"],
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if pip_check.returncode:
-        print("正在修复项目环境中的 pip……", flush=True)
+        print("Repairing pip in the project environment...", flush=True)
         subprocess.run([str(PYTHON), "-m", "ensurepip", "--upgrade"], cwd=ROOT, check=True)
     probe = subprocess.run([str(PYTHON), "-c", "import pytest; assert pytest.__version__ == '9.1.1'"],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if probe.returncode:
-        print("正在安装项目测试依赖；首次运行需要连接网络……", flush=True)
+        print("Installing test dependencies; the first launch requires internet access...", flush=True)
         subprocess.run([str(PYTHON), "-m", "pip", "install", "-r", str(ROOT / "requirements-dev.txt")],
                        cwd=ROOT, check=True)
 
@@ -165,11 +165,11 @@ def main() -> int:
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
     if sys.platform not in ("win32", "darwin"):
-        raise RuntimeError("该启动器目前支持 Windows 和 macOS。")
+        raise RuntimeError("This launcher supports Windows and macOS.")
     if sys.version_info < (3, 12):
-        raise RuntimeError("请安装 Python 3.12 或更高版本，并确保 python 命令可用。")
+        raise RuntimeError("Install Python 3.12 or newer and ensure python is on PATH.")
     if shutil.which("git") is None:
-        raise RuntimeError("未找到 Git。请安装 Git 并将其加入 PATH。")
+        raise RuntimeError("Git was not found. Install Git and add it to PATH.")
     os.chdir(ROOT)
     ensure_environment()
     configure()
@@ -178,7 +178,7 @@ def main() -> int:
         command.extend(["--model-config", str(CONFIG)])
     if args.no_browser:
         command.append("--no-browser")
-    print("\n正在打开 PatchLab；关闭此窗口将停止服务。", flush=True)
+    print("\nOpening PatchLab. Closing this window stops the service.", flush=True)
     return subprocess.call(command, cwd=ROOT, env=os.environ.copy())
 
 
@@ -186,6 +186,6 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
-        print(f"\n启动失败：{exc}", file=sys.stderr)
-        print("请检查 Python、Git、模型配置和网络连接后重试。", file=sys.stderr)
+        print(f"\nStartup failed: {exc}", file=sys.stderr)
+        print("Check Python, Git, model configuration, and network access, then retry.", file=sys.stderr)
         raise SystemExit(1)

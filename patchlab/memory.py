@@ -15,9 +15,18 @@ def compact_evidence(model, summary: str, observations: list, feedback: list, re
         return summary, observations, feedback
     payload = json.dumps({"previous_summary": summary, "observations": old_observations,
                           "feedback": old_feedback}, ensure_ascii=False)
-    new_summary = model.summarize(payload)
+    try:
+        new_summary = model.summarize(payload)
+    except ValueError as exc:
+        record("context_compaction_failed", scope="agent", reason=str(exc))
+        fallback = "Exact excerpts from older evidence (truncated):\n" + payload[:6000]
+        record("context_compaction_fallback", summary=fallback)
+        return fallback, recent_observations, recent_feedback
     if not isinstance(new_summary, str) or not new_summary.strip() or len(new_summary) > 8000:
-        raise ValueError("Evidence summary was invalid; original trace was retained.")
+        record("context_compaction_failed", scope="agent", reason="invalid summary")
+        fallback = "Exact excerpts from older evidence (truncated):\n" + payload[:6000]
+        record("context_compaction_fallback", summary=fallback)
+        return fallback, recent_observations, recent_feedback
     record("context_compacted", scope="agent", summary=new_summary,
            observations=len(old_observations), feedback=len(old_feedback))
     return new_summary, recent_observations, recent_feedback

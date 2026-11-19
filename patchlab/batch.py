@@ -147,11 +147,14 @@ def run_batch(
     tasks: list[BatchTask], output: Path, model_factory: Callable[[], object],
     runner: PytestRunner, *, modes: list[str], repeats: int = 1,
     calls: int = 16, attempts: int = 5,
+    paired_prefix: bool = False,
 ) -> dict:
     if not modes or any(mode not in {"single", "feedback", "memory"} for mode in modes):
         raise ValueError("modes must contain single, feedback, or memory")
     if not 1 <= repeats <= 20:
         raise ValueError("repeats must be between 1 and 20")
+    if paired_prefix and (len(modes) < 2 or modes[0] != "single"):
+        raise ValueError("paired-prefix evaluation requires single first and another condition")
     output = output.resolve()
     for item in tasks:
         if output.is_relative_to(item.task.repository.resolve()):
@@ -160,11 +163,16 @@ def run_batch(
     runs = []
     for item in tasks:
         task_runner = _task_runner(item, runner)
+        from .paired import PrefixCache, PairedDecider
+        prefix_caches = {repeat: PrefixCache() for repeat in range(1, repeats + 1)}
         for mode in modes:
             for repeat in range(1, repeats + 1):
                 run_dir = output / item.task_id / mode / f"run-{repeat:02d}"
+                decider = model_factory()
+                if paired_prefix:
+                    decider = PairedDecider(decider, prefix_caches[repeat])
                 result = execute(
-                    item.task, run_dir, model_factory(), task_runner, mode=mode,
+                    item.task, run_dir, decider, task_runner, mode=mode,
                     calls=calls, attempts=attempts,
                 )
                 runs.append({
@@ -174,6 +182,7 @@ def run_batch(
                 })
     summary = {
         "tasks": len(tasks), "modes": modes, "repeats": repeats, "runs": runs,
+        "paired_prefix": paired_prefix,
         "verified": sum(row["status"] == "verified" for row in runs),
         "candidate_ready": sum(row["status"] == "candidate_ready" for row in runs),
     }
@@ -220,6 +229,7 @@ def report_batch(output: Path) -> dict:
             "attempts": result.get("attempts"), "model_calls": result.get("model_calls"),
             "inspection_calls": result.get("inspection_calls"),
             "tested_candidates": result.get("verified_candidates"),
+            "duplicate_proposals": result.get("duplicate_proposals", 0),
             "elapsed_seconds": result.get("elapsed_seconds"),
             "tokens_reported": result.get("tokens_reported"),
             "calls_with_usage": result.get("calls_with_usage"),
@@ -232,7 +242,7 @@ def report_batch(output: Path) -> dict:
 
     fields = [
         "task_id", "mode", "repeat", "status", "official_status", "attempts", "model_calls",
-        "inspection_calls", "tested_candidates", "elapsed_seconds", "tokens_reported",
+        "inspection_calls", "tested_candidates", "duplicate_proposals", "elapsed_seconds", "tokens_reported",
         "calls_with_usage", "provider_requests", "provider_responses_with_usage",
         "provider_tokens_reported", "provider_usage_complete", "reason", "result",
     ]
